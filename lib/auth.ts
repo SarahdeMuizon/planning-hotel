@@ -8,22 +8,27 @@ const getSecret = () =>
     process.env.JWT_SECRET || 'fallback-dev-secret-do-not-use-in-prod'
   );
 
-export async function createManagerToken(role: ManagerRole = 'manager'): Promise<string> {
-  return await new SignJWT({ role })
+export async function createManagerToken(role: ManagerRole = 'manager', employeeToken?: string): Promise<string> {
+  const payload: Record<string, string> = { role };
+  if (employeeToken) payload.employeeToken = employeeToken;
+  return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
     .sign(getSecret());
 }
 
-export async function getManagerSession(): Promise<{ role: ManagerRole } | null> {
+export async function getManagerSession(): Promise<{ role: ManagerRole; employeeToken?: string } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('manager_token')?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (payload.role === 'manager' || payload.role === 'admin') {
-      return { role: payload.role as ManagerRole };
+      return {
+        role: payload.role as ManagerRole,
+        ...(payload.employeeToken ? { employeeToken: payload.employeeToken as string } : {}),
+      };
     }
     return null;
   } catch {

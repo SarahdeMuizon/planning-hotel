@@ -1,8 +1,11 @@
+export type EmployeeRole = 'employee' | 'admin';
+
 export interface Employee {
   id: number;
   name: string;
   color: string;
   department: string;
+  role: EmployeeRole;
   access_token: string;
   created_at: string;
 }

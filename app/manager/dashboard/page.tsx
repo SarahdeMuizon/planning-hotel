@@ -6,10 +6,11 @@ import DayTimeline from '@/components/DayTimeline';
 import RestDaysCalendar from '@/components/RestDaysCalendar';
 import PaidLeaveManager from '@/components/PaidLeaveManager';
 import LeaveRequestsManager from '@/components/LeaveRequestsManager';
+import EmployeePlanning from '@/components/EmployeePlanning';
 import { DEPARTMENTS } from '@/types';
 import clsx from 'clsx';
 
-type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests';
+type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'myplan';
 
 const DEPT_TABS = [
   { value: '', label: 'Tous', color: 'slate' },
@@ -21,15 +22,20 @@ export default function DashboardPage() {
   const [view, setView] = useState<View>('week');
   const [department, setDepartment] = useState<string>('');
   const [pendingCount, setPendingCount] = useState(0);
+  const [employeeToken, setEmployeeToken] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/planning/requests?status=pending')
-      .then(r => r.ok ? r.json() : [])
-      .then((rows: unknown[]) => setPendingCount(rows.length))
-      .catch(() => {});
-  }, [view]); // re-check when switching tabs
+    // Check pending requests + whether this is an admin employee session
+    Promise.all([
+      fetch('/api/planning/requests?status=pending').then(r => r.ok ? r.json() : []),
+      fetch('/api/auth/me').then(r => r.ok ? r.json() : { employeeToken: null }),
+    ]).then(([rows, me]: [unknown[], { employeeToken?: string | null }]) => {
+      setPendingCount(rows.length);
+      if (me.employeeToken) setEmployeeToken(me.employeeToken);
+    }).catch(() => {});
+  }, [view]);
 
-  const showDeptBar = view !== 'leaves' && view !== 'requests';
+  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'myplan';
 
   return (
     <div>
@@ -47,6 +53,14 @@ export default function DashboardPage() {
             onClick={() => setView('requests')}
             badge={pendingCount}
           />
+          {employeeToken && (
+            <ViewTab
+              label="Mon planning"
+              icon={<UserIcon />}
+              active={view === 'myplan'}
+              onClick={() => setView('myplan')}
+            />
+          )}
         </div>
       </div>
 
@@ -82,6 +96,7 @@ export default function DashboardPage() {
       {view === 'rest'     && <RestDaysCalendar department={department || undefined} />}
       {view === 'leaves'   && <PaidLeaveManager />}
       {view === 'requests' && <LeaveRequestsManager />}
+      {view === 'myplan'   && employeeToken && <EmployeePlanning token={employeeToken} embedded />}
     </div>
   );
 }
@@ -157,6 +172,15 @@ function RequestIcon() {
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
   );
 }

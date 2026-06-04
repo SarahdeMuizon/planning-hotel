@@ -90,6 +90,7 @@ async function initSchema(db: Client) {
     'ALTER TABLE schedule_exceptions ADD COLUMN start_time2 TEXT',
     'ALTER TABLE schedule_exceptions ADD COLUMN end_time2 TEXT',
     "ALTER TABLE paid_leaves ADD COLUMN leave_type TEXT NOT NULL DEFAULT 'cp'",
+    "ALTER TABLE employees ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'",
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* déjà présent */ }

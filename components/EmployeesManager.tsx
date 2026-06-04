@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import type { Employee } from '@/types';
+import type { Employee, EmployeeRole } from '@/types';
 import { EMPLOYEE_COLORS, DEPARTMENTS } from '@/types';
 import TemplateEditor from './TemplateEditor';
 import clsx from 'clsx';
@@ -15,6 +15,7 @@ export default function EmployeesManager() {
   const [name, setName] = useState('');
   const [color, setColor] = useState(EMPLOYEE_COLORS[0]);
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0]);
+  const [role, setRole] = useState<EmployeeRole>('employee');
   const [saving, setSaving] = useState(false);
   const [copiedToken, setCopiedToken] = useState<number | null>(null);
 
@@ -31,6 +32,7 @@ export default function EmployeesManager() {
     setName('');
     setColor(EMPLOYEE_COLORS[employees.length % EMPLOYEE_COLORS.length]);
     setDepartment(DEPARTMENTS[0]);
+    setRole('employee');
     setShowForm(true);
   }
 
@@ -39,6 +41,7 @@ export default function EmployeesManager() {
     setName(emp.name);
     setColor(emp.color);
     setDepartment(emp.department || DEPARTMENTS[0]);
+    setRole((emp.role || 'employee') as EmployeeRole);
     setShowForm(true);
   }
 
@@ -50,13 +53,13 @@ export default function EmployeesManager() {
       await fetch(`/api/employes/${editingEmployee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color, department }),
+        body: JSON.stringify({ name, color, department, role }),
       });
     } else {
       await fetch('/api/employes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color, department }),
+        body: JSON.stringify({ name, color, department, role }),
       });
     }
 
@@ -128,6 +131,11 @@ export default function EmployeesManager() {
                     )}>
                       {emp.department === 'Gestion Riad' ? 'Riad' : 'Clientèle'}
                     </span>
+                    {emp.role === 'admin' && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        Admin
+                      </span>
+                    )}
                     <span className="text-xs text-slate-400 truncate">/planning/{emp.access_token.slice(0, 8)}…</span>
                   </div>
                 </div>
@@ -253,6 +261,27 @@ export default function EmployeesManager() {
                     />
                   ))}
                 </div>
+              </div>
+
+              {/* Role toggle */}
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <div className="text-sm font-medium text-slate-700">Accès administrateur</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Accès complet via lien personnel</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRole(r => r === 'admin' ? 'employee' : 'admin')}
+                  className={clsx(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0',
+                    role === 'admin' ? 'bg-amber-500' : 'bg-slate-300'
+                  )}
+                >
+                  <span className={clsx(
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow',
+                    role === 'admin' ? 'translate-x-6' : 'translate-x-1'
+                  )} />
+                </button>
               </div>
 
               <div className="flex gap-2 pt-2">
