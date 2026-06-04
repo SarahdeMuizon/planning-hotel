@@ -1,0 +1,1 @@
+- [Projet planning hôtel](memory/project_planning_hotel.md) — Application Next.js 15 + SQLite pour gérer les plannings d'un hôtel (~10 employés)

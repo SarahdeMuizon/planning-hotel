@@ -1,0 +1,162 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import WeekCalendar from '@/components/WeekCalendar';
+import DayTimeline from '@/components/DayTimeline';
+import RestDaysCalendar from '@/components/RestDaysCalendar';
+import PaidLeaveManager from '@/components/PaidLeaveManager';
+import LeaveRequestsManager from '@/components/LeaveRequestsManager';
+import { DEPARTMENTS } from '@/types';
+import clsx from 'clsx';
+
+type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests';
+
+const DEPT_TABS = [
+  { value: '', label: 'Tous', color: 'slate' },
+  { value: 'Gestion Clientèle', label: 'Gestion Clientèle', color: 'blue' },
+  { value: 'Gestion Riad', label: 'Gestion Riad', color: 'purple' },
+] as const;
+
+export default function DashboardPage() {
+  const [view, setView] = useState<View>('week');
+  const [department, setDepartment] = useState<string>('');
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/planning/requests?status=pending')
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: unknown[]) => setPendingCount(rows.length))
+      .catch(() => {});
+  }, [view]); // re-check when switching tabs
+
+  const showDeptBar = view !== 'leaves' && view !== 'requests';
+
+  return (
+    <div>
+      {/* Row 1 — View tabs */}
+      <div className="border-b border-slate-200 bg-white px-4">
+        <div className="flex gap-1 max-w-screen-xl mx-auto overflow-x-auto">
+          <ViewTab label="Vue semaine"      icon={<WeekIcon />}     active={view === 'week'}     onClick={() => setView('week')} />
+          <ViewTab label="Timeline du jour" icon={<DayIcon />}      active={view === 'day'}      onClick={() => setView('day')} />
+          <ViewTab label="Jours de repos"   icon={<RestIcon />}     active={view === 'rest'}     onClick={() => setView('rest')} />
+          <ViewTab label="Congés"           icon={<LeaveIcon />}    active={view === 'leaves'}   onClick={() => setView('leaves')} />
+          <ViewTab
+            label="Demandes"
+            icon={<RequestIcon />}
+            active={view === 'requests'}
+            onClick={() => setView('requests')}
+            badge={pendingCount}
+          />
+        </div>
+      </div>
+
+      {/* Row 2 — Department tabs (hidden for management views) */}
+      {showDeptBar && (
+        <div className="bg-slate-50 border-b border-slate-200 px-4">
+          <div className="flex items-center gap-2 max-w-screen-xl mx-auto py-2">
+            <span className="text-xs text-slate-400 font-medium mr-1 hidden sm:block">Département :</span>
+            {DEPT_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setDepartment(tab.value)}
+                className={clsx(
+                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                  department === tab.value
+                    ? tab.color === 'blue'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : tab.color === 'purple'
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'bg-slate-700 text-white border-slate-700'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-white'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'week'     && <WeekCalendar department={department || undefined} />}
+      {view === 'day'      && <DayTimeline department={department || undefined} />}
+      {view === 'rest'     && <RestDaysCalendar department={department || undefined} />}
+      {view === 'leaves'   && <PaidLeaveManager />}
+      {view === 'requests' && <LeaveRequestsManager />}
+    </div>
+  );
+}
+
+function ViewTab({
+  label, icon, active, onClick, badge,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  badge?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap relative',
+        active
+          ? 'border-blue-600 text-blue-600'
+          : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+      )}
+    >
+      {icon}
+      {label}
+      {badge != null && badge > 0 && (
+        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function WeekIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function DayIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function RestIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  );
+}
+
+function LeaveIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    </svg>
+  );
+}
+
+function RequestIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}

@@ -1,0 +1,97 @@
+import { createClient, type Client } from '@libsql/client';
+
+declare global {
+  var __dbClient: Client | undefined;
+  var __dbInitialized: boolean | undefined;
+}
+
+export function getClient(): Client {
+  if (!global.__dbClient) {
+    global.__dbClient = createClient({
+      url: process.env.LIBSQL_URL || 'file:local.db',
+      authToken: process.env.LIBSQL_AUTH_TOKEN,
+    });
+  }
+  return global.__dbClient;
+}
+
+export async function getDb(): Promise<Client> {
+  const db = getClient();
+  if (!global.__dbInitialized) {
+    await initSchema(db);
+    global.__dbInitialized = true;
+  }
+  return db;
+}
+
+async function initSchema(db: Client) {
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#3B82F6',
+      department TEXT NOT NULL DEFAULT 'Gestion Clientèle',
+      access_token TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS schedule_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      day_of_week INTEGER NOT NULL CHECK(day_of_week >= 0 AND day_of_week <= 6),
+      start_time TEXT,
+      end_time TEXT,
+      start_time2 TEXT,
+      end_time2 TEXT,
+      UNIQUE(employee_id, day_of_week)
+    );
+
+    CREATE TABLE IF NOT EXISTS schedule_exceptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      start_time TEXT,
+      end_time TEXT,
+      start_time2 TEXT,
+      end_time2 TEXT,
+      note TEXT,
+      UNIQUE(employee_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS paid_leaves (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      leave_type TEXT NOT NULL DEFAULT 'cp',
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      leave_type TEXT NOT NULL DEFAULT 'cp',
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      comment TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      rejection_reason TEXT,
+      reviewed_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Migrations — colonnes ajoutées progressivement
+  const migrations = [
+    "ALTER TABLE employees ADD COLUMN department TEXT NOT NULL DEFAULT 'Gestion Clientèle'",
+    'ALTER TABLE schedule_templates ADD COLUMN start_time2 TEXT',
+    'ALTER TABLE schedule_templates ADD COLUMN end_time2 TEXT',
+    'ALTER TABLE schedule_exceptions ADD COLUMN start_time2 TEXT',
+    'ALTER TABLE schedule_exceptions ADD COLUMN end_time2 TEXT',
+    "ALTER TABLE paid_leaves ADD COLUMN leave_type TEXT NOT NULL DEFAULT 'cp'",
+  ];
+  for (const sql of migrations) {
+    try { await db.execute(sql); } catch { /* déjà présent */ }
+  }
+}
