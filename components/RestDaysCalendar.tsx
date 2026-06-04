@@ -27,7 +27,7 @@ function withAlpha(hex: string, alpha: number) {
   return hex + a;
 }
 
-export default function RestDaysCalendar({ department }: { department?: string }) {
+export default function RestDaysCalendar({ department, fetchToken }: { department?: string; fetchToken?: string }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
@@ -36,10 +36,11 @@ export default function RestDaysCalendar({ department }: { department?: string }
 
   const fetchMonth = useCallback(async (y: number, m: number) => {
     setLoading(true);
-    const res = await fetch(`/api/planning/month?year=${y}&month=${m}`);
+    const tp = fetchToken ? `&employeeToken=${fetchToken}` : '';
+    const res = await fetch(`/api/planning/month?year=${y}&month=${m}${tp}`);
     if (res.ok) setRows(await res.json());
     setLoading(false);
-  }, []);
+  }, [fetchToken]);
 
   useEffect(() => { fetchMonth(year, month); }, [year, month, fetchMonth]);
 

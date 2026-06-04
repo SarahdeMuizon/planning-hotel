@@ -5,11 +5,21 @@ import { getWeekSchedules, getMonthStats } from '@/lib/schedule';
 import { startOfWeek } from 'date-fns';
 import type { Employee } from '@/types';
 
+async function checkAuth(req: NextRequest): Promise<boolean> {
+  const session = await getManagerSession();
+  if (session) return true;
+  const { searchParams } = new URL(req.url);
+  const empToken = searchParams.get('employeeToken');
+  if (!empToken) return false;
+  const db = await getDb();
+  const r = await db.execute({ sql: 'SELECT id FROM employees WHERE access_token = ?', args: [empToken] });
+  return r.rows.length > 0;
+}
+
 // GET /api/planning?startDate=YYYY-MM-DD  → week schedule for all employees
 // GET /api/planning?year=2024&month=1     → monthly stats
 export async function GET(req: NextRequest) {
-  const session = await getManagerSession();
-  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  if (!(await checkAuth(req))) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   const db = await getDb();
   const employeesRes = await db.execute('SELECT * FROM employees ORDER BY name ASC');

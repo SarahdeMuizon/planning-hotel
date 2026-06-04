@@ -1,6 +1,6 @@
-import EmployeePlanning from '@/components/EmployeePlanning';
+import EmployeeDashboard from '@/components/EmployeeDashboard';
 
 export default async function PlanningPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  return <EmployeePlanning token={token} />;
+  return <EmployeeDashboard token={token} />;
 }

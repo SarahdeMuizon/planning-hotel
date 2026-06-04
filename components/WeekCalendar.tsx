@@ -11,7 +11,15 @@ import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
 import { isOvernightShift } from '@/lib/schedule';
 
-export default function WeekCalendar({ department }: { department?: string }) {
+export default function WeekCalendar({
+  department,
+  readOnly = false,
+  fetchToken,
+}: {
+  department?: string;
+  readOnly?: boolean;
+  fetchToken?: string;
+}) {
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
@@ -27,13 +35,14 @@ export default function WeekCalendar({ department }: { department?: string }) {
   const fetchSchedules = useCallback(async (date: Date) => {
     setLoading(true);
     const startStr = format(date, 'yyyy-MM-dd');
-    const res = await fetch(`/api/planning?startDate=${startStr}`);
+    const tokenParam = fetchToken ? `&employeeToken=${fetchToken}` : '';
+    const res = await fetch(`/api/planning?startDate=${startStr}${tokenParam}`);
     if (res.ok) {
       const data = await res.json();
       setSchedules(data);
     }
     setLoading(false);
-  }, []);
+  }, [fetchToken]);
 
   useEffect(() => {
     fetchSchedules(weekStart);
@@ -237,13 +246,17 @@ export default function WeekCalendar({ department }: { department?: string }) {
                           )}
                         >
                           <button
-                            onClick={() => !isLeave && openModal(row.employee, dateStr, dayIdx)}
+                            onClick={() => !isLeave && !readOnly && openModal(row.employee, dateStr, dayIdx)}
                             className={clsx(
                               'w-full rounded-lg py-1.5 px-1 text-xs transition-all',
                               isLeave
                                 ? leaveType === 'cm'
                                   ? 'bg-orange-100 text-orange-800 font-medium cursor-default'
                                   : 'bg-green-100 text-green-800 font-medium cursor-default'
+                                : readOnly
+                                ? isWorking
+                                  ? 'text-white font-medium shadow-sm cursor-default'
+                                  : 'bg-slate-100 text-slate-400 cursor-default'
                                 : isWorking
                                 ? 'text-white font-medium shadow-sm hover:scale-105 hover:shadow-sm'
                                 : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:scale-105'
@@ -300,12 +313,12 @@ export default function WeekCalendar({ department }: { department?: string }) {
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded bg-orange-200" /> Congé maladie (CM)
           </span>
-          <span>Cliquer sur une case pour modifier</span>
+          {!readOnly && <span>Cliquer sur une case pour modifier</span>}
         </div>
       </div>
 
-      {/* Schedule edit modal */}
-      {modalData && (
+      {/* Schedule edit modal — manager/admin only */}
+      {!readOnly && modalData && (
         <ScheduleModal
           employee={modalData.employee}
           date={modalData.date}

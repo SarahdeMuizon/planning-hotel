@@ -38,7 +38,7 @@ interface PlanningData {
   month: number;
 }
 
-export default function EmployeePlanning({ token }: { token: string }) {
+export default function EmployeePlanning({ token, embedded = false }: { token: string; embedded?: boolean }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -109,18 +109,19 @@ export default function EmployeePlanning({ token }: { token: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className={embedded ? 'py-16 text-center text-slate-400 text-sm' : 'min-h-screen bg-slate-50 flex items-center justify-center'}>
         <div className="text-slate-400 text-sm">Chargement...</div>
       </div>
     );
   }
 
   if (error || !data) {
+    if (embedded) return <div className="py-10 text-center text-red-400 text-sm">{error}</div>;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="card p-6 text-center max-w-sm">
           <div className="text-red-500 text-lg mb-2">Lien invalide</div>
-          <p className="text-slate-500 text-sm">{error || 'Ce lien de planning n\'existe pas.'}</p>
+          <p className="text-slate-500 text-sm">{error || "Ce lien de planning n'existe pas."}</p>
         </div>
       </div>
     );
@@ -148,24 +149,26 @@ export default function EmployeePlanning({ token }: { token: string }) {
   const thisWeekHours = weeklyHours[currentWeekKey] || 0;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-slate-900 text-white px-4 py-4">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-3 mb-1">
-            <span
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-              style={{ backgroundColor: employee.color }}
-            >
-              {employee.name[0].toUpperCase()}
-            </span>
-            <div>
-              <h1 className="font-semibold text-base">{employee.name}</h1>
-              <p className="text-blue-300 text-xs">Mon planning</p>
+    <div className={embedded ? '' : 'min-h-screen bg-slate-50'}>
+      {/* Header — hidden when embedded in EmployeeDashboard */}
+      {!embedded && (
+        <div className="bg-slate-900 text-white px-4 py-4">
+          <div className="max-w-lg mx-auto">
+            <div className="flex items-center gap-3 mb-1">
+              <span
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                style={{ backgroundColor: employee.color }}
+              >
+                {employee.name[0].toUpperCase()}
+              </span>
+              <div>
+                <h1 className="font-semibold text-base">{employee.name}</h1>
+                <p className="text-blue-300 text-xs">Mon planning</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-lg mx-auto p-4 space-y-4">
         {/* Stats cards */}

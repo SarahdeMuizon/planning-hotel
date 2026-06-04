@@ -130,7 +130,7 @@ function getCurrentSlotIdx(): number | null {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
-export default function DayTimeline({ department }: { department?: string }) {
+export default function DayTimeline({ department, fetchToken }: { department?: string; fetchToken?: string }) {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [prevWeekSchedules, setPrevWeekSchedules] = useState<EmployeeWeek[]>([]);
@@ -146,18 +146,19 @@ export default function DayTimeline({ department }: { department?: string }) {
   const fetchDay = useCallback(async (date: Date) => {
     setLoading(true);
     const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-    const res = await fetch(`/api/planning?startDate=${format(weekStart, 'yyyy-MM-dd')}`);
+    const tp = fetchToken ? `&employeeToken=${fetchToken}` : '';
+    const res = await fetch(`/api/planning?startDate=${format(weekStart, 'yyyy-MM-dd')}${tp}`);
     if (res.ok) setSchedules(await res.json());
 
     if (getDay(date) === 1) {
       const prevWeekStart = subWeeks(weekStart, 1);
-      const prevRes = await fetch(`/api/planning?startDate=${format(prevWeekStart, 'yyyy-MM-dd')}`);
+      const prevRes = await fetch(`/api/planning?startDate=${format(prevWeekStart, 'yyyy-MM-dd')}${tp}`);
       if (prevRes.ok) setPrevWeekSchedules(await prevRes.json());
     } else {
       setPrevWeekSchedules([]);
     }
     setLoading(false);
-  }, []);
+  }, [fetchToken]);
 
   useEffect(() => { fetchDay(selectedDate); }, [selectedDate, fetchDay]);
 
