@@ -217,7 +217,7 @@ export default function PaidLeaveManager() {
                     return (
                       <div key={leave.id} className="flex items-center gap-3 px-4 py-3">
                         <span
-                          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
+                          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-xs font-bold"
                           style={{ backgroundColor: leave.employee_color }}
                         >
                           {leave.employee_name[0].toUpperCase()}

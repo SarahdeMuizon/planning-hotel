@@ -85,9 +85,14 @@ export interface MonthStats {
 }
 
 export const EMPLOYEE_COLORS = [
-  '#EF4444', '#F97316', '#EAB308', '#22C55E',
-  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
-  '#06B6D4', '#84CC16',
+  '#AEC6CF', // bleu poudré
+  '#C9B8D8', // lavande
+  '#F4C5A8', // pêche
+  '#B5C9B5', // sauge
+  '#F0C0C0', // rose poudré
+  '#B8D4E8', // bleu ciel
+  '#F0E5A8', // jaune paille
+  '#B8DDD0', // vert menthe
 ];
 
 export const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];

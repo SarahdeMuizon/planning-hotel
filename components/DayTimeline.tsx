@@ -325,15 +325,15 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
 
             {/* ── Header ── */}
             <thead className="sticky top-0 z-20">
-              <tr className="bg-slate-800 text-white">
-                <th className="w-16 py-3 px-3 text-left text-xs font-medium text-slate-400 sticky left-0 bg-slate-800 z-30">
+              <tr className="bg-celadon-500 text-white">
+                <th className="w-16 py-3 px-3 text-left text-xs font-medium text-white/70 sticky left-0 bg-celadon-500 z-30">
                   Heure
                 </th>
 
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <th key={i} className="px-2 py-3 min-w-[80px]">
-                        <div className="h-4 bg-slate-700 rounded animate-pulse w-16 mx-auto" />
+                        <div className="h-4 bg-celadon-600 rounded animate-pulse w-16 mx-auto" />
                       </th>
                     ))
                   : entries.map(({ employee, visuals, isLeave, leaveType }) => (
@@ -341,7 +341,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                         <div className="flex flex-col items-center gap-1">
                           <span
                             className={clsx(
-                              'w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold',
+                              'w-7 h-7 rounded-full flex items-center justify-center text-slate-800 text-xs font-bold',
                               visuals.length === 0 && !isLeave && 'opacity-40'
                             )}
                             style={{ backgroundColor: employee.color }}
@@ -350,7 +350,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                           </span>
                           <span className={clsx(
                             'text-xs font-medium max-w-[70px] truncate',
-                            visuals.length > 0 ? 'text-white' : isLeave ? 'text-green-400' : 'text-slate-500'
+                            visuals.length > 0 ? 'text-white/90' : isLeave ? 'text-green-300' : 'text-white/50'
                           )}>
                             {employee.name.split(' ')[0]}
                           </span>
@@ -451,12 +451,12 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                                 style={{ backgroundColor: employee.color, opacity: 0.9 }}
                               >
                                 {first && (
-                                  <span className="absolute top-0.5 left-1 text-white text-[9px] font-semibold leading-none">
+                                  <span className="absolute top-0.5 left-1 text-slate-800 text-[9px] font-semibold leading-none">
                                     {activeShift.isOvernightEnd ? '🌙' : activeShift.actualStart.slice(0, 5)}
                                   </span>
                                 )}
                                 {last && (
-                                  <span className="absolute bottom-0.5 right-1 text-white text-[9px] font-semibold leading-none">
+                                  <span className="absolute bottom-0.5 right-1 text-slate-800 text-[9px] font-semibold leading-none">
                                     {activeShift.isOvernightStart ? '🌙' : activeShift.actualEnd.slice(0, 5)}
                                   </span>
                                 )}
@@ -497,7 +497,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                   {entries.map(({ employee, visuals, actualHours: h }) => (
                     <td key={employee.id} className="px-2 py-2 text-center">
                       {h > 0 ? (
-                        <span className="text-xs font-bold px-1.5 py-0.5 rounded text-white inline-flex items-center gap-0.5"
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded text-slate-800 inline-flex items-center gap-0.5"
                           style={{ backgroundColor: employee.color }}>
                           {h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`}
                           {visuals.some(v => v.isOvernightStart || v.isOvernightEnd) && (

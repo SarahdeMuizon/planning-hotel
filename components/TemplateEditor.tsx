@@ -108,7 +108,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-slate-800 text-xs font-bold"
             style={{ backgroundColor: employee.color }}
           >
             {employee.name[0]}

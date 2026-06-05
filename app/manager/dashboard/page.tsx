@@ -162,7 +162,7 @@ function ViewTab({
       className={clsx(
         'flex items-center gap-1.5 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 relative',
         active
-          ? 'border-celadon-500 text-celadon-600'
+          ? 'border-taupe text-taupe'
           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
       )}
     >

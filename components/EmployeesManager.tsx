@@ -139,7 +139,7 @@ export default function EmployeesManager() {
                 )}
               >
                 <span
-                  className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white font-semibold text-sm shadow-sm"
+                  className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 font-semibold text-sm shadow-sm"
                   style={{ backgroundColor: emp.color }}
                 >
                   {emp.name[0].toUpperCase()}

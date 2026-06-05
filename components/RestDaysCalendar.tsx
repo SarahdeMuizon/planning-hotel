@@ -213,9 +213,9 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
           <table className="border-collapse" style={{ minWidth: `${140 + daysInMonth * 28}px` }}>
             {/* Header: day numbers + day letters */}
             <thead>
-              <tr className="bg-slate-800 text-white">
+              <tr className="bg-celadon-500 text-white">
                 {/* Employee name column */}
-                <th className="sticky left-0 z-20 bg-slate-800 px-3 py-2 text-left text-xs font-medium w-36 min-w-36">
+                <th className="sticky left-0 z-20 bg-celadon-500 px-3 py-2 text-left text-xs font-medium w-36 min-w-36">
                   Employé
                 </th>
 
@@ -224,8 +224,8 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     key={num}
                     className={clsx(
                       'text-center py-1 select-none w-7',
-                      isWeekend ? 'bg-slate-700' : 'bg-slate-800',
-                      isToday && '!bg-celadon-600'
+                      isWeekend ? 'bg-celadon-600' : 'bg-celadon-500',
+                      isToday && '!bg-taupe'
                     )}
                   >
                     <div className={clsx('text-xs font-bold', isToday ? 'text-white' : 'text-white')}>
@@ -234,7 +234,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     <div className={clsx(
                       'text-[9px] font-medium',
                       isWeekend ? 'text-slate-400' : 'text-slate-400',
-                      isToday && '!text-celadon-100'
+                      isToday && '!text-white'
                     )}>
                       {DAY_LETTERS[dow]}
                     </div>
@@ -288,7 +288,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     )}>
                       <div className="flex items-center gap-2">
                         <span
-                          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
+                          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-[10px] font-bold"
                           style={{ backgroundColor: row.employee.color }}
                         >
                           {row.employee.name[0].toUpperCase()}
@@ -311,7 +311,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                           className={clsx(
                             'p-0 h-8',
                             isWeekend && !isRest && !isLeave && 'bg-slate-50/60',
-                            isToday && 'ring-1 ring-inset ring-celadon-400'
+                            isToday && 'ring-1 ring-inset ring-taupe-light'
                           )}
                           title={isLeave
                             ? `${row.employee.name} — congés payés`
@@ -367,7 +367,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     <td className="px-2 text-center">
                       <span className={clsx(
                         'text-xs font-bold px-1.5 py-0.5 rounded',
-                        row.restDays > 0 ? 'text-white' : 'text-slate-300'
+                        row.restDays > 0 ? 'text-slate-800' : 'text-slate-300'
                       )}
                         style={row.restDays > 0 ? { backgroundColor: withAlpha(row.employee.color, 0.8) } : undefined}
                       >

@@ -161,15 +161,15 @@ export default function TimeclockManager() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
-              <tr className="bg-slate-800 text-white text-sm">
-                <th className="py-3 px-4 text-left font-medium sticky left-0 bg-slate-800 w-36">Employé</th>
-                <th className="py-3 px-3 text-center font-medium text-slate-300 w-24">Prévu arrivée</th>
+              <tr className="bg-celadon-500 text-white text-sm">
+                <th className="py-3 px-4 text-left font-medium sticky left-0 bg-celadon-500 w-36">Employé</th>
+                <th className="py-3 px-3 text-center font-medium text-white/70 w-24">Prévu arrivée</th>
                 <th className="py-3 px-3 text-center font-medium w-24">Arrivée</th>
-                <th className="py-3 px-3 text-center font-medium text-slate-300 w-20">Écart</th>
-                <th className="py-3 px-3 text-center font-medium text-slate-300 w-24">Prévu départ</th>
+                <th className="py-3 px-3 text-center font-medium text-white/70 w-20">Écart</th>
+                <th className="py-3 px-3 text-center font-medium text-white/70 w-24">Prévu départ</th>
                 <th className="py-3 px-3 text-center font-medium w-24">Départ</th>
-                <th className="py-3 px-3 text-center font-medium text-slate-300 w-20">Écart</th>
-                <th className="py-3 px-3 text-center font-medium text-slate-400 w-16">Actions</th>
+                <th className="py-3 px-3 text-center font-medium text-white/70 w-20">Écart</th>
+                <th className="py-3 px-3 text-center font-medium text-white/60 w-16">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -193,7 +193,7 @@ export default function TimeclockManager() {
                     <tr key={row.employee_id} className={clsx('border-t border-slate-100', i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')}>
                       <td className={clsx('py-3 px-4 sticky left-0', i % 2 === 0 ? 'bg-white' : 'bg-slate-50')}>
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
+                          <span className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-[10px] font-bold"
                             style={{ backgroundColor: row.employee_color }}>
                             {row.employee_name[0].toUpperCase()}
                           </span>

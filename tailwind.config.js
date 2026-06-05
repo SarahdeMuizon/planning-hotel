@@ -23,6 +23,11 @@ module.exports = {
           800: '#4a7a6c',
           900: '#2d5e50',
         },
+        taupe: {
+          DEFAULT: '#A89880',
+          light:   '#CFC3B0',
+          dark:    '#8A7D68',
+        },
       },
     },
   },

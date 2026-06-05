@@ -50,16 +50,16 @@ export default function EmployeeDashboard({ token }: { token: string }) {
     <div className="min-h-screen flex flex-col bg-slate-50">
 
       {/* Header */}
-      <header className="bg-slate-900 text-white shadow-lg flex-shrink-0">
+      <header className="bg-celadon-500 text-white shadow-lg flex-shrink-0">
         <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-riad.png" alt="Riad Anyssates" className="w-7 h-7 object-contain flex-shrink-0" />
+          <img src="/logo-riad.png" alt="Riad Anyssates" className="w-7 h-7 object-contain flex-shrink-0" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(24%) saturate(609%) hue-rotate(122deg) brightness(88%) contrast(92%)' }} />
           <span className="font-semibold text-white">Riad Anyssates</span>
           {employee && (
             <>
               <span className="text-slate-600 mx-1">·</span>
               <span
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-slate-800 text-xs font-bold flex-shrink-0"
                 style={{ backgroundColor: employee.color }}
               >
                 {employee.name[0].toUpperCase()}
@@ -123,7 +123,7 @@ function Tab({ label, icon, active, onClick }: {
       className={clsx(
         'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
         active
-          ? 'border-celadon-500 text-celadon-600'
+          ? 'border-taupe text-taupe'
           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
       )}
     >

@@ -147,7 +147,7 @@ export default function LeaveRequestsManager() {
               <div key={req.id} className="p-4">
                 <div className="flex items-start gap-3">
                   <span
-                    className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mt-0.5"
+                    className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-xs font-bold mt-0.5"
                     style={{ backgroundColor: req.employee_color }}
                   >
                     {req.employee_name[0].toUpperCase()}
@@ -250,7 +250,7 @@ export default function LeaveRequestsManager() {
               {history.map(req => (
                 <div key={req.id} className="px-4 py-3 flex items-start gap-3">
                   <span
-                    className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold mt-0.5"
+                    className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-[10px] font-bold mt-0.5"
                     style={{ backgroundColor: req.employee_color }}
                   >
                     {req.employee_name[0].toUpperCase()}

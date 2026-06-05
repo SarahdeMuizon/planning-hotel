@@ -165,8 +165,8 @@ export default function WeekCalendar({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
-              <tr className="bg-slate-800 text-white">
-                <th className="py-3 px-3 text-left text-sm font-medium w-32 sticky left-0 bg-slate-800 z-10">
+              <tr className="bg-celadon-500 text-white">
+                <th className="py-3 px-3 text-left text-sm font-medium w-32 sticky left-0 bg-celadon-500 z-10">
                   Employé
                 </th>
                 {weekDates.map((date, i) => {
@@ -176,7 +176,7 @@ export default function WeekCalendar({
                       key={i}
                       className={clsx(
                         'py-3 px-2 text-center text-sm font-medium',
-                        isToday && 'bg-celadon-600'
+                        isToday && 'bg-taupe'
                       )}
                     >
                       <div>{DAYS_FR[i]}</div>
@@ -242,7 +242,7 @@ export default function WeekCalendar({
                           key={dayIdx}
                           className={clsx(
                             'py-1 px-1 text-center',
-                            isToday && 'ring-1 ring-inset ring-celadon-300'
+                            isToday && 'ring-1 ring-inset ring-taupe-light'
                           )}
                         >
                           <button
@@ -255,10 +255,10 @@ export default function WeekCalendar({
                                   : 'bg-green-100 text-green-800 font-medium cursor-default'
                                 : readOnly
                                 ? isWorking
-                                  ? 'text-white font-medium shadow-sm cursor-default'
+                                  ? 'text-slate-800 font-medium shadow-sm cursor-default'
                                   : 'bg-slate-100 text-slate-400 cursor-default'
                                 : isWorking
-                                ? 'text-white font-medium shadow-sm hover:scale-105 hover:shadow-sm'
+                                ? 'text-slate-800 font-medium shadow-sm hover:scale-105 hover:shadow-sm'
                                 : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:scale-105'
                             )}
                             style={isWorking && !isLeave ? { backgroundColor: row.employee.color } : undefined}
@@ -276,7 +276,7 @@ export default function WeekCalendar({
                                 <div className="opacity-80">{day.end_time?.slice(0, 5)}</div>
                                 {day.start_time2 && day.end_time2 && (
                                   <>
-                                    <div className="border-t border-white/30 my-0.5" />
+                                    <div className="border-t border-slate-600/20 my-0.5" />
                                     <div className="text-[10px] opacity-90">{day.start_time2.slice(0, 5)}</div>
                                     <div className="text-[10px] opacity-70">{day.end_time2.slice(0, 5)}</div>
                                   </>

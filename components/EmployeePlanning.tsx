@@ -210,11 +210,11 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
     <div className={embedded ? '' : 'min-h-screen bg-slate-50'}>
       {/* Header — hidden when embedded in EmployeeDashboard */}
       {!embedded && (
-        <div className="bg-slate-900 text-white px-4 py-4">
+        <div className="bg-celadon-500 text-white px-4 py-4">
           <div className="max-w-lg mx-auto">
             <div className="flex items-center gap-3 mb-1">
               <span
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-slate-800 font-bold text-sm flex-shrink-0"
                 style={{ backgroundColor: employee.color }}
               >
                 {employee.name[0].toUpperCase()}
@@ -308,9 +308,9 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
         {/* Calendar grid */}
         <div className="card overflow-hidden">
           {/* Day headers */}
-          <div className="grid grid-cols-7 bg-slate-800">
+          <div className="grid grid-cols-7 bg-celadon-500">
             {DAYS_FR.map((d) => (
-              <div key={d} className="text-center text-xs font-medium text-slate-300 py-2">{d}</div>
+              <div key={d} className="text-center text-xs font-medium text-white py-2">{d}</div>
             ))}
           </div>
 
@@ -333,12 +333,12 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                   key={dateStr}
                   className={clsx(
                     'p-1 min-h-[60px] border-t border-l border-slate-100 first:border-l-0',
-                    isToday && 'bg-celadon-50',
+                    isToday && 'bg-taupe/10',
                   )}
                 >
                   <div className={clsx(
                     'text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full',
-                    isToday ? 'bg-celadon-500 text-white' : 'text-slate-500'
+                    isToday ? 'bg-taupe text-white' : 'text-slate-500'
                   )}>
                     {format(date, 'd')}
                   </div>
@@ -350,7 +350,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                     </div>
                   ) : isWorking ? (
                     <div
-                      className="rounded text-white text-[10px] px-1 py-0.5 leading-tight"
+                      className="rounded text-slate-800 text-[10px] px-1 py-0.5 leading-tight"
                       style={{ backgroundColor: employee.color }}
                     >
                       <div>{day.start_time?.slice(0, 5)}</div>
@@ -405,16 +405,16 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                     </div>
                   ) : (
                     <div
-                      className="flex-1 rounded-lg px-3 py-1.5 text-white text-sm font-medium"
+                      className="flex-1 rounded-lg px-3 py-1.5 text-slate-800 text-sm font-medium"
                       style={{ backgroundColor: employee.color }}
                     >
                       <div>{day?.start_time?.slice(0, 5)} – {day?.end_time?.slice(0, 5)}</div>
                       {day?.start_time2 && day?.end_time2 && (
-                        <div className="text-xs opacity-85 mt-0.5">
+                        <div className="text-xs opacity-75 mt-0.5">
                           {day.start_time2.slice(0, 5)} – {day.end_time2.slice(0, 5)}
                         </div>
                       )}
-                      {day?.note && <span className="text-xs opacity-80">({day.note})</span>}
+                      {day?.note && <span className="text-xs opacity-70">({day.note})</span>}
                     </div>
                   )}
                   <div className="text-sm font-semibold text-slate-600 w-10 text-right">
