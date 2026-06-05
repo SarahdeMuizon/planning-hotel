@@ -80,6 +80,15 @@ async function initSchema(db: Client) {
       reviewed_at TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS timeclock (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      type TEXT NOT NULL,
+      clocked_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Migrations — colonnes ajoutées progressivement
@@ -91,6 +100,8 @@ async function initSchema(db: Client) {
     'ALTER TABLE schedule_exceptions ADD COLUMN end_time2 TEXT',
     "ALTER TABLE paid_leaves ADD COLUMN leave_type TEXT NOT NULL DEFAULT 'cp'",
     "ALTER TABLE employees ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'",
+    "ALTER TABLE employees ADD COLUMN contract_start TEXT",
+    "ALTER TABLE employees ADD COLUMN contract_end TEXT",
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* déjà présent */ }

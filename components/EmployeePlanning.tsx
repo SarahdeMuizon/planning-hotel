@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, startOfWeek, addWeeks, differenceInCalendarDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, startOfWeek, differenceInCalendarDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Employee, DaySchedule, LeaveType } from '@/types';
 import { DAYS_FR } from '@/types';
@@ -57,6 +57,33 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   const [reqError, setReqError] = useState('');
   const [reqSuccess, setReqSuccess] = useState(false);
 
+  // Timeclock state
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const [tcArrival, setTcArrival] = useState<string | null>(null);
+  const [tcDeparture, setTcDeparture] = useState<string | null>(null);
+  const [tcLoading, setTcLoading] = useState(false);
+
+  const loadTimeclock = useCallback(async () => {
+    const res = await fetch(`/api/employee/${token}/timeclock?date=${todayStr}`);
+    if (res.ok) {
+      const rows: { type: string; clocked_at: string }[] = await res.json();
+      setTcArrival(rows.find(r => r.type === 'arrival')?.clocked_at ?? null);
+      setTcDeparture(rows.find(r => r.type === 'departure')?.clocked_at ?? null);
+    }
+  }, [token, todayStr]);
+
+  async function handleTimeclock(type: 'arrival' | 'departure') {
+    setTcLoading(true);
+    const clockedAt = format(new Date(), 'HH:mm');
+    await fetch(`/api/employee/${token}/timeclock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, clockedAt, date: todayStr }),
+    });
+    await loadTimeclock();
+    setTcLoading(false);
+  }
+
   const loadRequests = useCallback(async () => {
     const res = await fetch(`/api/employee/${token}/leave-requests`);
     if (res.ok) setRequests(await res.json());
@@ -74,6 +101,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   }, [token, year, month]);
 
   useEffect(() => { loadRequests(); }, [loadRequests]);
+  useEffect(() => { loadTimeclock(); }, [loadTimeclock]);
 
   async function handleSubmitRequest() {
     setReqError('');
@@ -171,6 +199,49 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       )}
 
       <div className="max-w-lg mx-auto p-4 space-y-4">
+        {/* ── Timeclock card ── */}
+        <div className="card p-4">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+            Pointage — {format(now, 'd MMMM yyyy', { locale: fr })}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Arrival */}
+            <div className="text-center">
+              {tcArrival ? (
+                <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2.5">
+                  <div className="text-[10px] text-green-600 font-medium uppercase">Arrivée pointée</div>
+                  <div className="text-xl font-bold text-green-700 mt-0.5">{tcArrival}</div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleTimeclock('arrival')}
+                  disabled={tcLoading}
+                  className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  {tcLoading ? '...' : 'Pointer l\'arrivée'}
+                </button>
+              )}
+            </div>
+            {/* Departure */}
+            <div className="text-center">
+              {tcDeparture ? (
+                <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
+                  <div className="text-[10px] text-slate-500 font-medium uppercase">Départ pointé</div>
+                  <div className="text-xl font-bold text-slate-700 mt-0.5">{tcDeparture}</div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleTimeclock('departure')}
+                  disabled={tcLoading}
+                  className="w-full rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  {tcLoading ? '...' : 'Pointer le départ'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Stats cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-3 text-center">

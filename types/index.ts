@@ -6,7 +6,20 @@ export interface Employee {
   color: string;
   department: string;
   role: EmployeeRole;
+  contract_start: string | null;
+  contract_end: string | null;
   access_token: string;
+  created_at: string;
+}
+
+export type TimeclockType = 'arrival' | 'departure';
+
+export interface TimeclockEntry {
+  id: number;
+  employee_id: number;
+  date: string;         // YYYY-MM-DD
+  type: TimeclockType;
+  clocked_at: string;   // HH:MM
   created_at: string;
 }
 

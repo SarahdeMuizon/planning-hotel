@@ -7,10 +7,11 @@ import RestDaysCalendar from '@/components/RestDaysCalendar';
 import PaidLeaveManager from '@/components/PaidLeaveManager';
 import LeaveRequestsManager from '@/components/LeaveRequestsManager';
 import EmployeePlanning from '@/components/EmployeePlanning';
+import TimeclockManager from '@/components/TimeclockManager';
 import { DEPARTMENTS } from '@/types';
 import clsx from 'clsx';
 
-type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'myplan';
+type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'myplan';
 
 const DEPT_TABS = [
   { value: '', label: 'Tous', color: 'slate' },
@@ -35,7 +36,7 @@ export default function DashboardPage() {
     }).catch(() => {});
   }, [view]);
 
-  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'myplan';
+  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'timeclock' && view !== 'myplan';
 
   return (
     <div>
@@ -46,6 +47,7 @@ export default function DashboardPage() {
           <ViewTab label="Timeline du jour" icon={<DayIcon />}      active={view === 'day'}      onClick={() => setView('day')} />
           <ViewTab label="Jours de repos"   icon={<RestIcon />}     active={view === 'rest'}     onClick={() => setView('rest')} />
           <ViewTab label="Congés"           icon={<LeaveIcon />}    active={view === 'leaves'}   onClick={() => setView('leaves')} />
+          <ViewTab label="Pointages"    icon={<ClockIcon />}    active={view === 'timeclock'} onClick={() => setView('timeclock')} />
           <ViewTab
             label="Demandes"
             icon={<RequestIcon />}
@@ -94,8 +96,9 @@ export default function DashboardPage() {
       {view === 'week'     && <WeekCalendar department={department || undefined} />}
       {view === 'day'      && <DayTimeline department={department || undefined} />}
       {view === 'rest'     && <RestDaysCalendar department={department || undefined} />}
-      {view === 'leaves'   && <PaidLeaveManager />}
-      {view === 'requests' && <LeaveRequestsManager />}
+      {view === 'leaves'    && <PaidLeaveManager />}
+      {view === 'requests'  && <LeaveRequestsManager />}
+      {view === 'timeclock' && <TimeclockManager />}
       {view === 'myplan'   && employeeToken && <EmployeePlanning token={employeeToken} embedded />}
     </div>
   );
@@ -181,6 +184,15 @@ function UserIcon() {
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }

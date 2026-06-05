@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const session = await getManagerSession();
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { name, color, department, role } = await req.json();
+  const { name, color, department, role, contract_start, contract_end } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: 'Nom requis' }, { status: 400 });
 
   const db = await getDb();
@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
   const empRole = role === 'admin' ? 'admin' : 'employee';
 
   const result = await db.execute({
-    sql: 'INSERT INTO employees (name, color, department, role, access_token) VALUES (?, ?, ?, ?, ?) RETURNING *',
-    args: [name.trim(), defaultColor, dept, empRole, token],
+    sql: 'INSERT INTO employees (name, color, department, role, contract_start, contract_end, access_token) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *',
+    args: [name.trim(), defaultColor, dept, empRole, contract_start || null, contract_end || null, token],
   });
 
   return NextResponse.json(result.rows[0], { status: 201 });

@@ -16,6 +16,9 @@ export default function EmployeesManager() {
   const [color, setColor] = useState(EMPLOYEE_COLORS[0]);
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0]);
   const [role, setRole] = useState<EmployeeRole>('employee');
+  const [contractStart, setContractStart] = useState('');
+  const [contractEnd, setContractEnd] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copiedToken, setCopiedToken] = useState<number | null>(null);
 
@@ -27,12 +30,20 @@ export default function EmployeesManager() {
 
   useEffect(() => { fetchEmployees(); }, []);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  function isActive(emp: Employee) {
+    return !emp.contract_end || emp.contract_end >= todayStr;
+  }
+
   function openAdd() {
     setEditingEmployee(null);
     setName('');
     setColor(EMPLOYEE_COLORS[employees.length % EMPLOYEE_COLORS.length]);
     setDepartment(DEPARTMENTS[0]);
     setRole('employee');
+    setContractStart('');
+    setContractEnd('');
     setShowForm(true);
   }
 
@@ -42,6 +53,8 @@ export default function EmployeesManager() {
     setColor(emp.color);
     setDepartment(emp.department || DEPARTMENTS[0]);
     setRole((emp.role || 'employee') as EmployeeRole);
+    setContractStart(emp.contract_start || '');
+    setContractEnd(emp.contract_end || '');
     setShowForm(true);
   }
 
@@ -49,17 +62,18 @@ export default function EmployeesManager() {
     e.preventDefault();
     setSaving(true);
 
+    const payload = { name, color, department, role, contract_start: contractStart || null, contract_end: contractEnd || null };
     if (editingEmployee) {
       await fetch(`/api/employes/${editingEmployee.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color, department, role }),
+        body: JSON.stringify(payload),
       });
     } else {
       await fetch('/api/employes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color, department, role }),
+        body: JSON.stringify(payload),
       });
     }
 
@@ -86,14 +100,24 @@ export default function EmployeesManager() {
 
   return (
     <div className="p-4 max-w-screen-xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-lg font-semibold text-slate-900">Employés</h1>
-        <button onClick={openAdd} className="btn-primary text-sm flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Ajouter
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowInactive(v => !v)}
+            className={clsx('text-xs px-3 py-1.5 rounded-full border font-medium transition-colors',
+              showInactive ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+            )}
+          >
+            {showInactive ? 'Masquer anciens' : 'Voir anciens employés'}
+          </button>
+          <button onClick={openAdd} className="btn-primary text-sm flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Ajouter
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -101,12 +125,12 @@ export default function EmployeesManager() {
         <div className="card divide-y divide-slate-100">
           {loading ? (
             <div className="p-6 text-center text-slate-400 text-sm">Chargement...</div>
-          ) : employees.length === 0 ? (
+          ) : employees.filter(e => showInactive || isActive(e)).length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">
-              Aucun employé. Ajoutez le premier !
+              {employees.length === 0 ? 'Aucun employé. Ajoutez le premier !' : 'Aucun employé actif.'}
             </div>
           ) : (
-            employees.map((emp) => (
+            employees.filter(e => showInactive || isActive(e)).map((emp) => (
               <div
                 key={emp.id}
                 className={clsx(
@@ -132,10 +156,13 @@ export default function EmployeesManager() {
                       {emp.department === 'Gestion Riad' ? 'Riad' : 'Clientèle'}
                     </span>
                     {emp.role === 'admin' && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                        Admin
-                      </span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Admin</span>
                     )}
+                    <span className={clsx('text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                      isActive(emp) ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                    )}>
+                      {isActive(emp) ? 'Actif' : 'Inactif'}
+                    </span>
                     <span className="text-xs text-slate-400 truncate">/planning/{emp.access_token.slice(0, 8)}…</span>
                   </div>
                 </div>
@@ -262,6 +289,23 @@ export default function EmployeesManager() {
                   ))}
                 </div>
               </div>
+
+              {/* Contract dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Date d'entrée</label>
+                  <input type="date" value={contractStart} onChange={e => setContractStart(e.target.value)} className="input-field text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Date de sortie</label>
+                  <input type="date" value={contractEnd} min={contractStart || undefined} onChange={e => setContractEnd(e.target.value)} className="input-field text-sm" />
+                </div>
+              </div>
+              {contractEnd && contractEnd < todayStr && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">
+                  Cet employé sera marqué "Inactif" et n'apparaîtra plus dans les plannings futurs.
+                </p>
+              )}
 
               {/* Role toggle */}
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
