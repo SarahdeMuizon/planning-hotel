@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import WeekCalendar from '@/components/WeekCalendar';
 import DayTimeline from '@/components/DayTimeline';
 import RestDaysCalendar from '@/components/RestDaysCalendar';
@@ -15,8 +16,8 @@ type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'myp
 
 const DEPT_TABS = [
   { value: '', label: 'Tous', color: 'slate' },
-  { value: 'Gestion Clientèle', label: 'Gestion Clientèle', color: 'blue' },
-  { value: 'Gestion Riad', label: 'Gestion Riad', color: 'purple' },
+  { value: 'Gestion Clientèle', label: 'Clientèle', color: 'blue' },
+  { value: 'Gestion Riad', label: 'Riad', color: 'purple' },
 ] as const;
 
 export default function DashboardPage() {
@@ -26,7 +27,6 @@ export default function DashboardPage() {
   const [employeeToken, setEmployeeToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check pending requests + whether this is an admin employee session
     Promise.all([
       fetch('/api/planning/requests?status=pending').then(r => r.ok ? r.json() : []),
       fetch('/api/auth/me').then(r => r.ok ? r.json() : { employeeToken: null }),
@@ -40,14 +40,43 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Row 1 — View tabs */}
-      <div className="border-b border-slate-200 bg-white px-4">
-        <div className="flex gap-1 max-w-screen-xl mx-auto overflow-x-auto">
-          <ViewTab label="Vue semaine"      icon={<WeekIcon />}     active={view === 'week'}     onClick={() => setView('week')} />
-          <ViewTab label="Timeline du jour" icon={<DayIcon />}      active={view === 'day'}      onClick={() => setView('day')} />
-          <ViewTab label="Jours de repos"   icon={<RestIcon />}     active={view === 'rest'}     onClick={() => setView('rest')} />
-          <ViewTab label="Congés"           icon={<LeaveIcon />}    active={view === 'leaves'}   onClick={() => setView('leaves')} />
-          <ViewTab label="Pointages"    icon={<ClockIcon />}    active={view === 'timeclock'} onClick={() => setView('timeclock')} />
+      {/* ── Tab bar ──────────────────────────────────────────────────────────
+          Outer div owns the scroll boundary. Inner div is min-w-max so it
+          never shrinks — the key fix for mobile. Scrollbar is hidden
+          visually but functional (swipe gesture works on iOS/Android). */}
+      <div className="border-b border-slate-200 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-max px-2 sm:px-4">
+
+          <ViewTab
+            label="Semaine" fullLabel="Vue semaine"
+            icon={<WeekIcon />}
+            active={view === 'week'}
+            onClick={() => setView('week')}
+          />
+          <ViewTab
+            label="Timeline"
+            icon={<DayIcon />}
+            active={view === 'day'}
+            onClick={() => setView('day')}
+          />
+          <ViewTab
+            label="Repos" fullLabel="Jours de repos"
+            icon={<RestIcon />}
+            active={view === 'rest'}
+            onClick={() => setView('rest')}
+          />
+          <ViewTab
+            label="Congés"
+            icon={<LeaveIcon />}
+            active={view === 'leaves'}
+            onClick={() => setView('leaves')}
+          />
+          <ViewTab
+            label="Pointages"
+            icon={<ClockIcon />}
+            active={view === 'timeclock'}
+            onClick={() => setView('timeclock')}
+          />
           <ViewTab
             label="Demandes"
             icon={<RequestIcon />}
@@ -57,26 +86,36 @@ export default function DashboardPage() {
           />
           {employeeToken && (
             <ViewTab
-              label="Mon planning"
+              label="Moi" fullLabel="Mon planning"
               icon={<UserIcon />}
               active={view === 'myplan'}
               onClick={() => setView('myplan')}
             />
           )}
+
+          {/* Employés — lien vers page dédiée.
+              Sur mobile le header nav est masqué, on l'expose ici. */}
+          <Link
+            href="/manager/dashboard/employes"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            <EmpIcon />
+            <span>Employés</span>
+          </Link>
         </div>
       </div>
 
-      {/* Row 2 — Department tabs (hidden for management views) */}
+      {/* ── Department filter bar ─────────────────────────────────────────── */}
       {showDeptBar && (
-        <div className="bg-slate-50 border-b border-slate-200 px-4">
-          <div className="flex items-center gap-2 max-w-screen-xl mx-auto py-2">
-            <span className="text-xs text-slate-400 font-medium mr-1 hidden sm:block">Département :</span>
+        <div className="bg-slate-50 border-b border-slate-200 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-2 min-w-max px-4 py-2">
+            <span className="text-xs text-slate-400 font-medium mr-1 flex-shrink-0">Département :</span>
             {DEPT_TABS.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setDepartment(tab.value)}
                 className={clsx(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border flex-shrink-0',
                   department === tab.value
                     ? tab.color === 'blue'
                       ? 'bg-blue-600 text-white border-blue-600'
@@ -96,18 +135,22 @@ export default function DashboardPage() {
       {view === 'week'     && <WeekCalendar department={department || undefined} />}
       {view === 'day'      && <DayTimeline department={department || undefined} />}
       {view === 'rest'     && <RestDaysCalendar department={department || undefined} />}
-      {view === 'leaves'    && <PaidLeaveManager />}
-      {view === 'requests'  && <LeaveRequestsManager />}
+      {view === 'leaves'   && <PaidLeaveManager />}
+      {view === 'requests' && <LeaveRequestsManager />}
       {view === 'timeclock' && <TimeclockManager />}
       {view === 'myplan'   && employeeToken && <EmployeePlanning token={employeeToken} embedded />}
     </div>
   );
 }
 
+// ── ViewTab ────────────────────────────────────────────────────────────────
+// `label`     = texte affiché sur mobile (court)
+// `fullLabel` = texte affiché sur desktop sm+ (optionnel, sinon = label)
 function ViewTab({
-  label, icon, active, onClick, badge,
+  label, fullLabel, icon, active, onClick, badge,
 }: {
   label: string;
+  fullLabel?: string;
   icon: React.ReactNode;
   active: boolean;
   onClick: () => void;
@@ -117,16 +160,23 @@ function ViewTab({
     <button
       onClick={onClick}
       className={clsx(
-        'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap relative',
+        'flex items-center gap-1.5 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 relative',
         active
           ? 'border-blue-600 text-blue-600'
           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
       )}
     >
       {icon}
-      {label}
+      {fullLabel ? (
+        <>
+          <span className="sm:hidden">{label}</span>
+          <span className="hidden sm:inline">{fullLabel}</span>
+        </>
+      ) : (
+        <span>{label}</span>
+      )}
       {badge != null && badge > 0 && (
-        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex-shrink-0">
           {badge}
         </span>
       )}
@@ -134,65 +184,68 @@ function ViewTab({
   );
 }
 
+// ── Icons ──────────────────────────────────────────────────────────────────
 function WeekIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   );
 }
-
 function DayIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
-
 function RestIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
     </svg>
   );
 }
-
 function LeaveIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
     </svg>
   );
 }
-
 function RequestIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   );
 }
-
+function ClockIcon() {
+  return (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
 function UserIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
   );
 }
-
-function ClockIcon() {
+function EmpIcon() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   );
 }
