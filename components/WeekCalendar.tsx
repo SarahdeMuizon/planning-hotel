@@ -144,7 +144,7 @@ export default function WeekCalendar({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowStats(!showStats)}
-            className={clsx('btn-secondary text-sm', showStats && 'bg-blue-50 border-blue-200 text-blue-700')}
+            className={clsx('btn-secondary text-sm', showStats && 'bg-celadon-100 border-celadon-300 text-celadon-700')}
           >
             Stats du mois
           </button>
@@ -176,7 +176,7 @@ export default function WeekCalendar({
                       key={i}
                       className={clsx(
                         'py-3 px-2 text-center text-sm font-medium',
-                        isToday && 'bg-blue-700'
+                        isToday && 'bg-celadon-600'
                       )}
                     >
                       <div>{DAYS_FR[i]}</div>
@@ -200,7 +200,7 @@ export default function WeekCalendar({
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-500 text-sm">
                     {schedules.length === 0 ? (
-                      <>Aucun employé.{' '}<a href="/manager/dashboard/employes" className="text-blue-600 underline">Ajouter des employés</a></>
+                      <>Aucun employé.{' '}<a href="/manager/dashboard/employes" className="text-celadon-600 underline">Ajouter des employés</a></>
                     ) : (
                       <>Aucun employé dans ce département.</>
                     )}
@@ -242,7 +242,7 @@ export default function WeekCalendar({
                           key={dayIdx}
                           className={clsx(
                             'py-1 px-1 text-center',
-                            isToday && 'ring-1 ring-inset ring-blue-300'
+                            isToday && 'ring-1 ring-inset ring-celadon-300'
                           )}
                         >
                           <button

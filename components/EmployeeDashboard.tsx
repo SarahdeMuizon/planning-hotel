@@ -52,11 +52,9 @@ export default function EmployeeDashboard({ token }: { token: string }) {
       {/* Header */}
       <header className="bg-slate-900 text-white shadow-lg flex-shrink-0">
         <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center gap-3">
-          <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span className="font-semibold text-white">Planning</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-riad.png" alt="Riad Anyssates" className="w-7 h-7 object-contain flex-shrink-0" />
+          <span className="font-semibold text-white">Riad Anyssates</span>
           {employee && (
             <>
               <span className="text-slate-600 mx-1">·</span>
@@ -125,7 +123,7 @@ function Tab({ label, icon, active, onClick }: {
       className={clsx(
         'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
         active
-          ? 'border-blue-600 text-blue-600'
+          ? 'border-celadon-500 text-celadon-600'
           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
       )}
     >

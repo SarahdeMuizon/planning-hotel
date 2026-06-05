@@ -165,7 +165,7 @@ export default function ScheduleModal({ employee, date, dayOfWeek, currentSchedu
           <button
             onClick={() => setMode('exception')}
             className={`flex-1 py-2 font-medium transition-colors ${
-              mode === 'exception' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              mode === 'exception' ? 'bg-celadon-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >
             Ce jour uniquement
@@ -173,7 +173,7 @@ export default function ScheduleModal({ employee, date, dayOfWeek, currentSchedu
           <button
             onClick={() => setMode('template')}
             className={`flex-1 py-2 font-medium transition-colors border-l border-slate-200 ${
-              mode === 'template' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+              mode === 'template' ? 'bg-celadon-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >
             Tous les {DAYS_FULL_FR[dayOfWeek]}s
@@ -192,7 +192,7 @@ export default function ScheduleModal({ employee, date, dayOfWeek, currentSchedu
           <button
             onClick={() => setIsOff(!isOff)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              isOff ? 'bg-blue-600' : 'bg-slate-300'
+              isOff ? 'bg-celadon-500' : 'bg-slate-300'
             }`}
           >
             <span
@@ -237,7 +237,7 @@ export default function ScheduleModal({ employee, date, dayOfWeek, currentSchedu
             ) : (
               <button
                 onClick={() => setHasSlot2(true)}
-                className="w-full border border-dashed border-slate-300 rounded-lg py-2 text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors mb-3"
+                className="w-full border border-dashed border-slate-300 rounded-lg py-2 text-xs text-slate-500 hover:border-celadon-400 hover:text-celadon-600 transition-colors mb-3"
               >
                 + Ajouter un 2ème créneau
               </button>

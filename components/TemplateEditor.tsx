@@ -132,7 +132,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
               key={i}
               className={clsx(
                 'p-2 rounded-lg',
-                day.isWorking ? 'bg-blue-50' : 'bg-slate-50'
+                day.isWorking ? 'bg-celadon-50' : 'bg-slate-50'
               )}
             >
               {/* Ligne principale */}
@@ -146,7 +146,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
                   className={clsx(
                     'text-xs px-2 py-1 rounded font-medium transition-colors flex-shrink-0',
                     day.isWorking
-                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      ? 'bg-celadon-100 text-celadon-700 hover:bg-celadon-200'
                       : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
                   )}
                 >
@@ -158,7 +158,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
                     <select
                       value={day.startTime}
                       onChange={(e) => updateDay(i, { startTime: e.target.value })}
-                      className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 min-w-0"
+                      className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-celadon-400 min-w-0"
                     >
                       {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -166,7 +166,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
                     <select
                       value={day.endTime}
                       onChange={(e) => updateDay(i, { endTime: e.target.value })}
-                      className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 min-w-0"
+                      className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-celadon-400 min-w-0"
                     >
                       {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -183,7 +183,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
                       <select
                         value={day.startTime2}
                         onChange={(e) => updateDay(i, { startTime2: e.target.value })}
-                        className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 min-w-0"
+                        className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-celadon-400 min-w-0"
                       >
                         {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                       </select>
@@ -191,7 +191,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
                       <select
                         value={day.endTime2}
                         onChange={(e) => updateDay(i, { endTime2: e.target.value })}
-                        className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 min-w-0"
+                        className="flex-1 text-xs border border-slate-200 rounded px-1 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-celadon-400 min-w-0"
                       >
                         {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                       </select>
@@ -208,7 +208,7 @@ export default function TemplateEditor({ employee }: { employee: Employee }) {
                   <div className="mt-1.5 pl-[72px]">
                     <button
                       onClick={() => updateDay(i, { hasSlot2: true })}
-                      className="text-[10px] text-slate-400 hover:text-blue-600 transition-colors"
+                      className="text-[10px] text-slate-400 hover:text-celadon-600 transition-colors"
                     >
                       + 2ème créneau
                     </button>

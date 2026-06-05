@@ -16,7 +16,7 @@ type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'myp
 
 const DEPT_TABS = [
   { value: '', label: 'Tous', color: 'slate' },
-  { value: 'Gestion Clientèle', label: 'Clientèle', color: 'blue' },
+  { value: 'Gestion Clientèle', label: 'Clientèle', color: 'celadon' },
   { value: 'Gestion Riad', label: 'Riad', color: 'purple' },
 ] as const;
 
@@ -117,8 +117,8 @@ export default function DashboardPage() {
                 className={clsx(
                   'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border flex-shrink-0',
                   department === tab.value
-                    ? tab.color === 'blue'
-                      ? 'bg-blue-600 text-white border-blue-600'
+                    ? tab.color === 'celadon'
+                      ? 'bg-celadon-500 text-white border-celadon-500'
                       : tab.color === 'purple'
                       ? 'bg-purple-600 text-white border-purple-600'
                       : 'bg-slate-700 text-white border-slate-700'
@@ -162,7 +162,7 @@ function ViewTab({
       className={clsx(
         'flex items-center gap-1.5 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 relative',
         active
-          ? 'border-blue-600 text-blue-600'
+          ? 'border-celadon-500 text-celadon-600'
           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
       )}
     >

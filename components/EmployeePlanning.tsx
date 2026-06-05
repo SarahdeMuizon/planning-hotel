@@ -221,7 +221,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               </span>
               <div>
                 <h1 className="font-semibold text-base">{employee.name}</h1>
-                <p className="text-blue-300 text-xs">Mon planning</p>
+                <p className="text-celadon-200 text-xs">Mon planning</p>
               </div>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                 <button
                   onClick={() => handleTimeclock('arrival')}
                   disabled={tcLoading}
-                  className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="w-full rounded-lg bg-celadon-500 hover:bg-celadon-700 text-white px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
                 >
                   {tcLoading ? '...' : 'Pointer l\'arrivée'}
                 </button>
@@ -333,12 +333,12 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                   key={dateStr}
                   className={clsx(
                     'p-1 min-h-[60px] border-t border-l border-slate-100 first:border-l-0',
-                    isToday && 'bg-blue-50',
+                    isToday && 'bg-celadon-50',
                   )}
                 >
                   <div className={clsx(
                     'text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full',
-                    isToday ? 'bg-blue-600 text-white' : 'text-slate-500'
+                    isToday ? 'bg-celadon-500 text-white' : 'text-slate-500'
                   )}>
                     {format(date, 'd')}
                   </div>
@@ -440,7 +440,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
         {!showRequestForm && (
           <button
             onClick={() => setShowRequestForm(true)}
-            className="w-full card px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors border-dashed"
+            className="w-full card px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium text-celadon-600 hover:bg-celadon-50 transition-colors border-dashed"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

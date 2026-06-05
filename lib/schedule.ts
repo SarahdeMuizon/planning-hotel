@@ -44,6 +44,16 @@ function toMon0(jsDay: number): number {
   return (jsDay + 6) % 7;
 }
 
+// Ensure slot1 is always the earlier start time.
+// HH:MM lexicographic comparison equals chronological order for same-day times.
+function sortedSlots(
+  s1: string | null, e1: string | null,
+  s2: string | null, e2: string | null,
+): [string | null, string | null, string | null, string | null] {
+  if (!s1 || !s2) return [s1, e1, s2, e2];
+  return s1 <= s2 ? [s1, e1, s2, e2] : [s2, e2, s1, e1];
+}
+
 // Build a Map<"employeeId-YYYY-MM-DD", LeaveType> for all leave days in the range
 async function buildLeaveMap(db: Client, startStr: string, endStr: string): Promise<Map<string, LeaveType>> {
   const res = await db.execute({
@@ -120,32 +130,28 @@ export async function getWeekSchedules(
       const tpl = templates.get(`${employee.id}-${dayOfWeek}`);
 
       if (exc) {
-        const hours = calcTotalHours(
+        const [s1, e1, s2, e2] = sortedSlots(
           exc.start_time as string | null, exc.end_time as string | null,
           exc.start_time2 as string | null, exc.end_time2 as string | null,
         );
+        const hours = calcTotalHours(s1, e1, s2, e2);
         totalHours += hours;
         days[date] = {
-          start_time: exc.start_time as string | null,
-          end_time: exc.end_time as string | null,
-          start_time2: exc.start_time2 as string | null,
-          end_time2: exc.end_time2 as string | null,
-          is_off: !exc.start_time, is_exception: true,
+          start_time: s1, end_time: e1, start_time2: s2, end_time2: e2,
+          is_off: !s1, is_exception: true,
           is_leave: false, leave_type: null,
           note: exc.note as string | null, hours,
         };
       } else if (tpl) {
-        const hours = calcTotalHours(
+        const [s1, e1, s2, e2] = sortedSlots(
           tpl.start_time as string | null, tpl.end_time as string | null,
           tpl.start_time2 as string | null, tpl.end_time2 as string | null,
         );
+        const hours = calcTotalHours(s1, e1, s2, e2);
         totalHours += hours;
         days[date] = {
-          start_time: tpl.start_time as string | null,
-          end_time: tpl.end_time as string | null,
-          start_time2: tpl.start_time2 as string | null,
-          end_time2: tpl.end_time2 as string | null,
-          is_off: !tpl.start_time, is_exception: false,
+          start_time: s1, end_time: e1, start_time2: s2, end_time2: e2,
+          is_off: !s1, is_exception: false,
           is_leave: false, leave_type: null, hours,
         };
       } else {
@@ -278,32 +284,28 @@ export async function getEmployeeMonthSchedule(
     const tpl = templates.get(dayOfWeek);
 
     if (exc) {
-      const hours = calcTotalHours(
+      const [s1, e1, s2, e2] = sortedSlots(
         exc.start_time as string | null, exc.end_time as string | null,
         exc.start_time2 as string | null, exc.end_time2 as string | null,
       );
+      const hours = calcTotalHours(s1, e1, s2, e2);
       totalHours += hours;
       schedule[dateStr] = {
-        start_time: exc.start_time as string | null,
-        end_time: exc.end_time as string | null,
-        start_time2: exc.start_time2 as string | null,
-        end_time2: exc.end_time2 as string | null,
-        is_off: !exc.start_time, is_exception: true,
+        start_time: s1, end_time: e1, start_time2: s2, end_time2: e2,
+        is_off: !s1, is_exception: true,
         is_leave: false, leave_type: null,
         note: exc.note as string | null, hours,
       };
     } else if (tpl) {
-      const hours = calcTotalHours(
+      const [s1, e1, s2, e2] = sortedSlots(
         tpl.start_time as string | null, tpl.end_time as string | null,
         tpl.start_time2 as string | null, tpl.end_time2 as string | null,
       );
+      const hours = calcTotalHours(s1, e1, s2, e2);
       totalHours += hours;
       schedule[dateStr] = {
-        start_time: tpl.start_time as string | null,
-        end_time: tpl.end_time as string | null,
-        start_time2: tpl.start_time2 as string | null,
-        end_time2: tpl.end_time2 as string | null,
-        is_off: !tpl.start_time, is_exception: false,
+        start_time: s1, end_time: e1, start_time2: s2, end_time2: e2,
+        is_off: !s1, is_exception: false,
         is_leave: false, leave_type: null, hours,
       };
     } else {
@@ -369,32 +371,28 @@ export async function getAllEmployeesMonthSchedule(
         const exc = exceptions.get(`${employee.id}-${dateStr}`);
         const tpl = templates.get(`${employee.id}-${dayOfWeek}`);
         if (exc) {
-          const hours = calcTotalHours(
+          const [s1, e1, s2, e2] = sortedSlots(
             exc.start_time as string | null, exc.end_time as string | null,
             exc.start_time2 as string | null, exc.end_time2 as string | null,
           );
+          const hours = calcTotalHours(s1, e1, s2, e2);
           totalHours += hours;
           entry = {
-            start_time: exc.start_time as string | null,
-            end_time: exc.end_time as string | null,
-            start_time2: exc.start_time2 as string | null,
-            end_time2: exc.end_time2 as string | null,
-            is_off: !exc.start_time, is_exception: true,
+            start_time: s1, end_time: e1, start_time2: s2, end_time2: e2,
+            is_off: !s1, is_exception: true,
             is_leave: false, leave_type: null,
             note: exc.note as string | null, hours,
           };
         } else if (tpl) {
-          const hours = calcTotalHours(
+          const [s1, e1, s2, e2] = sortedSlots(
             tpl.start_time as string | null, tpl.end_time as string | null,
             tpl.start_time2 as string | null, tpl.end_time2 as string | null,
           );
+          const hours = calcTotalHours(s1, e1, s2, e2);
           totalHours += hours;
           entry = {
-            start_time: tpl.start_time as string | null,
-            end_time: tpl.end_time as string | null,
-            start_time2: tpl.start_time2 as string | null,
-            end_time2: tpl.end_time2 as string | null,
-            is_off: !tpl.start_time, is_exception: false,
+            start_time: s1, end_time: e1, start_time2: s2, end_time2: e2,
+            is_off: !s1, is_exception: false,
             is_leave: false, leave_type: null, hours,
           };
         } else {

@@ -135,7 +135,7 @@ export default function EmployeesManager() {
                 key={emp.id}
                 className={clsx(
                   'p-4 flex items-center gap-3',
-                  selectedEmployee?.id === emp.id && 'bg-blue-50'
+                  selectedEmployee?.id === emp.id && 'bg-celadon-50'
                 )}
               >
                 <span
@@ -151,7 +151,7 @@ export default function EmployeesManager() {
                       'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
                       emp.department === 'Gestion Riad'
                         ? 'bg-purple-100 text-purple-700'
-                        : 'bg-blue-100 text-blue-700'
+                        : 'bg-celadon-100 text-celadon-700'
                     )}>
                       {emp.department === 'Gestion Riad' ? 'Riad' : 'Clientèle'}
                     </span>
@@ -170,7 +170,7 @@ export default function EmployeesManager() {
                   <button
                     onClick={() => setSelectedEmployee(selectedEmployee?.id === emp.id ? null : emp)}
                     title="Modifier le planning type"
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-celadon-600 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -262,7 +262,7 @@ export default function EmployeesManager() {
                         department === d
                           ? d === 'Gestion Riad'
                             ? 'bg-purple-600 text-white border-purple-600'
-                            : 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-celadon-500 text-white border-celadon-500'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                       )}
                     >
@@ -282,7 +282,7 @@ export default function EmployeesManager() {
                       onClick={() => setColor(c)}
                       className={clsx(
                         'w-8 h-8 rounded-full transition-all',
-                        color === c ? 'ring-2 ring-offset-2 ring-blue-600 scale-110' : 'hover:scale-110'
+                        color === c ? 'ring-2 ring-offset-2 ring-celadon-500 scale-110' : 'hover:scale-110'
                       )}
                       style={{ backgroundColor: c }}
                     />

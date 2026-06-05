@@ -300,7 +300,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
 
         <div className="flex items-center gap-2 text-sm">
           {isToday && (
-            <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium">
+            <span className="bg-celadon-100 text-celadon-700 px-2.5 py-1 rounded-full font-medium">
               {presentNow.length} présent{presentNow.length !== 1 ? 's' : ''} maintenant
             </span>
           )}
@@ -519,7 +519,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
           {!loading && entries.length === 0 && (
             <div className="py-16 text-center text-slate-400 text-sm">
               Aucun employé.{' '}
-              <a href="/manager/dashboard/employes" className="text-blue-600 underline">
+              <a href="/manager/dashboard/employes" className="text-celadon-600 underline">
                 Ajouter des employés
               </a>
             </div>

@@ -202,7 +202,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
           Week-end (colonne)
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-4 h-4 rounded border-2 border-blue-400 inline-block" />
+          <span className="w-4 h-4 rounded border-2 border-celadon-400 inline-block" />
           Aujourd'hui
         </div>
       </div>
@@ -225,7 +225,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     className={clsx(
                       'text-center py-1 select-none w-7',
                       isWeekend ? 'bg-slate-700' : 'bg-slate-800',
-                      isToday && '!bg-blue-700'
+                      isToday && '!bg-celadon-600'
                     )}
                   >
                     <div className={clsx('text-xs font-bold', isToday ? 'text-white' : 'text-white')}>
@@ -234,7 +234,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     <div className={clsx(
                       'text-[9px] font-medium',
                       isWeekend ? 'text-slate-400' : 'text-slate-400',
-                      isToday && '!text-blue-200'
+                      isToday && '!text-celadon-100'
                     )}>
                       {DAY_LETTERS[dow]}
                     </div>
@@ -268,7 +268,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                 <tr>
                   <td colSpan={daysInMonth + 3} className="py-16 text-center text-slate-400 text-sm">
                     {rows.length === 0
-                      ? <>Aucun employé. <a href="/manager/dashboard/employes" className="text-blue-600 underline">Ajouter des employés</a></>
+                      ? <>Aucun employé. <a href="/manager/dashboard/employes" className="text-celadon-600 underline">Ajouter des employés</a></>
                       : 'Aucun employé dans ce département.'}
                   </td>
                 </tr>
@@ -311,7 +311,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                           className={clsx(
                             'p-0 h-8',
                             isWeekend && !isRest && !isLeave && 'bg-slate-50/60',
-                            isToday && 'ring-1 ring-inset ring-blue-400'
+                            isToday && 'ring-1 ring-inset ring-celadon-400'
                           )}
                           title={isLeave
                             ? `${row.employee.name} — congés payés`
