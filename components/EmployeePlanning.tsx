@@ -57,6 +57,28 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   const [reqError, setReqError] = useState('');
   const [reqSuccess, setReqSuccess] = useState(false);
 
+  // Certificate state (CM only)
+  const [certData, setCertData] = useState<string | null>(null);
+  const [certName, setCertName] = useState<string | null>(null);
+  const [certError, setCertError] = useState('');
+
+  function handleCertFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) { setCertData(null); setCertName(null); return; }
+    if (file.size > 3 * 1024 * 1024) {
+      setCertError('Fichier trop grand (max 3 Mo). Compressez la photo ou réduisez la qualité.');
+      e.target.value = '';
+      return;
+    }
+    setCertError('');
+    setCertName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setCertData(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function clearCert() { setCertData(null); setCertName(null); setCertError(''); }
+
   // Timeclock state
   const todayStr = format(now, 'yyyy-MM-dd');
   const [tcArrival, setTcArrival] = useState<string | null>(null);
@@ -111,13 +133,21 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
     const res = await fetch(`/api/employee/${token}/leave-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ leaveType: reqType, startDate: reqStart, endDate: reqEnd, comment: reqComment || null }),
+      body: JSON.stringify({
+        leaveType: reqType,
+        startDate: reqStart,
+        endDate: reqEnd,
+        comment: reqComment || null,
+        certificateData: (reqType === 'cm' ? certData : null),
+        certificateName: (reqType === 'cm' ? certName : null),
+      }),
     });
     setReqSaving(false);
     if (res.ok) {
       setReqSuccess(true);
       setShowRequestForm(false);
       setReqStart(''); setReqEnd(''); setReqComment('');
+      clearCert();
       await loadRequests();
       setTimeout(() => setReqSuccess(false), 4000);
     } else {
@@ -436,7 +466,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               {(['cp', 'cm'] as LeaveType[]).map(t => (
                 <button
                   key={t}
-                  onClick={() => setReqType(t)}
+                  onClick={() => { setReqType(t); if (t === 'cp') clearCert(); }}
                   className={clsx(
                     'flex-1 py-2 rounded-lg text-xs font-medium border transition-colors',
                     reqType === t
@@ -465,6 +495,55 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               <p className="text-xs text-slate-500">
                 {differenceInCalendarDays(new Date(reqEnd + 'T00:00:00'), new Date(reqStart + 'T00:00:00')) + 1} jour(s)
               </p>
+            )}
+
+            {/* Certificate upload — CM only */}
+            {reqType === 'cm' && (
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Certificat médical
+                  <span className="ml-1 text-slate-400">(optionnel · jpg, png, pdf · max 3 Mo)</span>
+                </label>
+                {certData ? (
+                  <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    {certData.startsWith('data:image') ? (
+                      <img src={certData} alt="Certificat" className="w-14 h-14 object-cover rounded-md flex-shrink-0" />
+                    ) : (
+                      <div className="w-14 h-14 flex items-center justify-center bg-orange-100 rounded-md flex-shrink-0">
+                        <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-slate-700 truncate">{certName}</p>
+                      <p className="text-[10px] text-orange-600 mt-0.5">Certificat ajouté</p>
+                    </div>
+                    <button onClick={clearCert} className="text-slate-400 hover:text-red-500 p-1 flex-shrink-0" title="Supprimer">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-orange-300 hover:bg-orange-50 transition-colors active:bg-orange-100">
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm text-slate-500">Photo ou fichier</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/jpeg,image/jpg,image/png,application/pdf"
+                      onChange={handleCertFile}
+                    />
+                  </label>
+                )}
+                {certError && <p className="text-xs text-red-500 mt-1">{certError}</p>}
+              </div>
             )}
 
             {/* Comment */}

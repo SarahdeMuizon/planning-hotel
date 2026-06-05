@@ -19,6 +19,47 @@ interface LeaveRequest {
   rejection_reason: string | null;
   reviewed_at: string | null;
   created_at: string;
+  certificate_data: string | null;
+  certificate_name: string | null;
+}
+
+function CertificateBlock({ data, name }: { data: string; name: string | null }) {
+  const isImage = data.startsWith('data:image');
+  return (
+    <div className="mt-2">
+      {isImage ? (
+        <button
+          onClick={() => window.open(data, '_blank')}
+          className="block group relative"
+          title="Voir en grand"
+        >
+          <img
+            src={data}
+            alt="Certificat médical"
+            className="max-h-28 rounded-lg border border-orange-200 object-cover shadow-sm group-hover:opacity-90 transition-opacity"
+          />
+          <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 rounded-lg text-white text-xs font-medium transition-opacity">
+            Agrandir
+          </span>
+        </button>
+      ) : null}
+      <button
+        onClick={() => {
+          const link = document.createElement('a');
+          link.href = data;
+          link.download = name || 'certificat';
+          link.click();
+        }}
+        className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-800 mt-1.5 font-medium"
+      >
+        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+        </svg>
+        {name || 'certificat_medical'}
+      </button>
+    </div>
+  );
 }
 
 const TYPE_LABELS: Record<LeaveType, string> = { cp: 'Congés payés', cm: 'Congé maladie' };
@@ -125,6 +166,12 @@ export default function LeaveRequestsManager() {
                     {req.comment && (
                       <div className="text-xs text-slate-500 mt-1 italic">"{req.comment}"</div>
                     )}
+                    {req.leave_type === 'cm' && req.certificate_data && (
+                      <CertificateBlock data={req.certificate_data} name={req.certificate_name} />
+                    )}
+                    {req.leave_type === 'cm' && !req.certificate_data && (
+                      <p className="text-[10px] text-slate-400 mt-1 italic">Aucun certificat joint</p>
+                    )}
                     <div className="text-[10px] text-slate-400 mt-1">
                       Soumis le {format(new Date(req.created_at), 'd MMM yyyy à HH:mm', { locale: fr })}
                     </div>
@@ -226,6 +273,9 @@ export default function LeaveRequestsManager() {
                     </div>
                     {req.rejection_reason && (
                       <div className="text-xs text-red-500 mt-0.5">Motif : {req.rejection_reason}</div>
+                    )}
+                    {req.leave_type === 'cm' && req.certificate_data && (
+                      <CertificateBlock data={req.certificate_data} name={req.certificate_name} />
                     )}
                   </div>
                 </div>

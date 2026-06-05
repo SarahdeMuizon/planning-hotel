@@ -102,6 +102,8 @@ async function initSchema(db: Client) {
     "ALTER TABLE employees ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'",
     "ALTER TABLE employees ADD COLUMN contract_start TEXT",
     "ALTER TABLE employees ADD COLUMN contract_end TEXT",
+    "ALTER TABLE leave_requests ADD COLUMN certificate_data TEXT",
+    "ALTER TABLE leave_requests ADD COLUMN certificate_name TEXT",
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* déjà présent */ }
