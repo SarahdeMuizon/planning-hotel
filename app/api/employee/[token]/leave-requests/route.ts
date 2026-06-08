@@ -55,5 +55,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, employee_id, leave_type, start_date, end_date, comment, status, certificate_name, created_at`,
     args: [employee.id, type, startDate, endDate, comment || null, certificateData || null, certificateName || null],
   });
+
+  const typeLabel = type === 'cm' ? 'congé maladie' : 'congés payés';
+  await db.execute({
+    sql: `INSERT INTO notifications (type, employee_name, message) VALUES ('leave_request', ?, ?)`,
+    args: [employee.name, `${employee.name} a soumis une demande de ${typeLabel} (${startDate} → ${endDate})`],
+  }).catch(() => {});
+
   return NextResponse.json(result.rows[0], { status: 201 });
 }

@@ -46,6 +46,28 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(result.rows[0], { status: 201 });
 }
 
+// PATCH /api/planning/leaves  { id, startDate, endDate, leaveType, note? }
+export async function PATCH(req: NextRequest) {
+  const session = await getManagerSession();
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+
+  const { id, startDate, endDate, leaveType, note } = await req.json();
+  if (!id || !startDate || !endDate) {
+    return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
+  }
+  if (startDate > endDate) {
+    return NextResponse.json({ error: 'La date de début doit être avant la date de fin' }, { status: 400 });
+  }
+  const type = leaveType === 'cm' ? 'cm' : 'cp';
+
+  const db = await getDb();
+  await db.execute({
+    sql: 'UPDATE paid_leaves SET start_date=?, end_date=?, leave_type=?, note=? WHERE id=?',
+    args: [startDate, endDate, type, note || null, Number(id)],
+  });
+  return NextResponse.json({ ok: true });
+}
+
 // DELETE /api/planning/leaves?id=5
 export async function DELETE(req: NextRequest) {
   const session = await getManagerSession();

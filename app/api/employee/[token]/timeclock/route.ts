@@ -58,5 +58,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     sql: 'INSERT INTO timeclock (employee_id, date, type, clocked_at) VALUES (?, ?, ?, ?) RETURNING *',
     args: [employee.id, date, type, clockedAt],
   });
+
+  const typeLabel = type === 'arrival' ? 'arrivée' : 'départ';
+  await db.execute({
+    sql: `INSERT INTO notifications (type, employee_name, message) VALUES ('timeclock', ?, ?)`,
+    args: [employee.name, `${employee.name} a pointé son ${typeLabel} à ${clockedAt}`],
+  }).catch(() => {});
+
   return NextResponse.json(result.rows[0], { status: 201 });
 }

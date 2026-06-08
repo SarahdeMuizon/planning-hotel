@@ -29,7 +29,7 @@ async function initSchema(db: Client) {
     CREATE TABLE IF NOT EXISTS employees (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      color TEXT NOT NULL DEFAULT '#3B82F6',
+      color TEXT NOT NULL DEFAULT '#AEC6CF',
       department TEXT NOT NULL DEFAULT 'Gestion Clientèle',
       access_token TEXT NOT NULL UNIQUE,
       created_at TEXT DEFAULT (datetime('now'))
@@ -87,6 +87,15 @@ async function initSchema(db: Client) {
       date TEXT NOT NULL,
       type TEXT NOT NULL,
       clocked_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      employee_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      read_at TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);

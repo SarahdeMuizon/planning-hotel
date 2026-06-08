@@ -38,6 +38,7 @@ export default function PaidLeaveManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingLeave, setEditingLeave] = useState<LeaveRow | null>(null);
 
   // Form state
   const [employeeId, setEmployeeId] = useState('');
@@ -46,6 +47,13 @@ export default function PaidLeaveManager() {
   const [endDate, setEndDate] = useState('');
   const [note, setNote] = useState('');
   const [formError, setFormError] = useState('');
+
+  // Edit form state
+  const [editType, setEditType] = useState<LeaveType>('cp');
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [editError, setEditError] = useState('');
 
   async function load() {
     const [empRes, leaveRes] = await Promise.all([
@@ -83,6 +91,30 @@ export default function PaidLeaveManager() {
       const data = await res.json();
       setFormError(data.error || "Erreur lors de l'ajout.");
     }
+  }
+
+  function openEdit(leave: LeaveRow) {
+    setEditingLeave(leave);
+    setEditType(leave.leave_type);
+    setEditStart(leave.start_date);
+    setEditEnd(leave.end_date);
+    setEditNote(leave.note || '');
+    setEditError('');
+  }
+
+  async function handleEdit() {
+    setEditError('');
+    if (!editStart || !editEnd) { setEditError('Dates manquantes.'); return; }
+    if (editStart > editEnd) { setEditError('La date de début doit être avant la date de fin.'); return; }
+    setSaving(true);
+    const res = await fetch('/api/planning/leaves', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingLeave!.id, startDate: editStart, endDate: editEnd, leaveType: editType, note: editNote || null }),
+    });
+    setSaving(false);
+    if (res.ok) { setEditingLeave(null); await load(); }
+    else { const d = await res.json(); setEditError(d.error || 'Erreur.'); }
   }
 
   async function handleDelete(id: number) {
@@ -215,45 +247,90 @@ export default function PaidLeaveManager() {
                     const lt = (leave.leave_type || 'cp') as LeaveType;
                     const colors = LEAVE_COLORS[lt];
                     return (
-                      <div key={leave.id} className="flex items-center gap-3 px-4 py-3">
-                        <span
-                          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-xs font-bold"
-                          style={{ backgroundColor: leave.employee_color }}
-                        >
-                          {leave.employee_name[0].toUpperCase()}
-                        </span>
+                      <div key={leave.id}>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <span
+                            className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-xs font-bold"
+                            style={{ backgroundColor: leave.employee_color }}
+                          >
+                            {leave.employee_name[0].toUpperCase()}
+                          </span>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-800">{leave.employee_name}</span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.badge}`}>
-                              {lt.toUpperCase()}
-                            </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-slate-800">{leave.employee_name}</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.badge}`}>
+                                {lt.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className={`text-xs font-medium ${colors.text}`}>
+                              {fmtDate(leave.start_date)} → {fmtDate(leave.end_date)}
+                              <span className="ml-2 text-slate-400">({nbDays(leave.start_date, leave.end_date)} j.)</span>
+                            </div>
+                            {leave.note && (
+                              <div className="text-xs text-slate-400 truncate">{leave.note}</div>
+                            )}
                           </div>
-                          <div className={`text-xs font-medium ${colors.text}`}>
-                            {fmtDate(leave.start_date)} → {fmtDate(leave.end_date)}
-                            <span className="ml-2 text-slate-400">({nbDays(leave.start_date, leave.end_date)} j.)</span>
+
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => editingLeave?.id === leave.id ? setEditingLeave(null) : openEdit(leave)}
+                              className="text-slate-400 hover:text-celadon-600 transition-colors p-1"
+                              title="Modifier"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(leave.id)}
+                              disabled={deletingId === leave.id}
+                              className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                              title="Supprimer"
+                            >
+                              {deletingId === leave.id ? (
+                                <span className="text-xs text-slate-300">...</span>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              )}
+                            </button>
                           </div>
-                          {leave.note && (
-                            <div className="text-xs text-slate-400 truncate">{leave.note}</div>
-                          )}
                         </div>
 
-                        <button
-                          onClick={() => handleDelete(leave.id)}
-                          disabled={deletingId === leave.id}
-                          className="text-slate-300 hover:text-red-500 transition-colors p-1 flex-shrink-0"
-                          title="Supprimer"
-                        >
-                          {deletingId === leave.id ? (
-                            <span className="text-xs text-slate-300">...</span>
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          )}
-                        </button>
+                        {/* Inline edit form */}
+                        {editingLeave?.id === leave.id && (
+                          <div className="mx-4 mb-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                            <div className="flex gap-2">
+                              {(['cp', 'cm'] as LeaveType[]).map(t => (
+                                <button key={t} onClick={() => setEditType(t)}
+                                  className={`flex-1 py-1.5 px-2 rounded text-xs font-medium border transition-colors ${
+                                    editType === t
+                                      ? t === 'cp' ? 'bg-green-600 text-white border-green-600' : 'bg-orange-500 text-white border-orange-500'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >{LEAVE_LABELS[t]}</button>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)} className="input-field text-xs" />
+                              <input type="date" value={editEnd} min={editStart} onChange={e => setEditEnd(e.target.value)} className="input-field text-xs" />
+                            </div>
+                            <input type="text" value={editNote} onChange={e => setEditNote(e.target.value)} className="input-field text-xs" placeholder="Note (optionnel)" />
+                            {editError && <p className="text-xs text-red-500">{editError}</p>}
+                            <div className="flex gap-2">
+                              <button onClick={handleEdit} disabled={saving} className="btn-primary text-xs py-1.5 flex-1">
+                                {saving ? '...' : 'Enregistrer'}
+                              </button>
+                              <button onClick={() => setEditingLeave(null)} className="btn-secondary text-xs py-1.5 flex-1">
+                                Annuler
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

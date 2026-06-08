@@ -93,6 +93,8 @@ export const EMPLOYEE_COLORS = [
   '#B8D4E8', // bleu ciel
   '#F0E5A8', // jaune paille
   '#B8DDD0', // vert menthe
+  '#D4B8D4', // mauve poudré
+  '#C8D4A8', // vert olive doux
 ];
 
 export const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];

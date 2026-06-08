@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import WeekCalendar from '@/components/WeekCalendar';
 import DayTimeline from '@/components/DayTimeline';
 import RestDaysCalendar from '@/components/RestDaysCalendar';
@@ -93,15 +92,6 @@ export default function DashboardPage() {
             />
           )}
 
-          {/* Employés — lien vers page dédiée.
-              Sur mobile le header nav est masqué, on l'expose ici. */}
-          <Link
-            href="/manager/dashboard/employes"
-            className="flex items-center gap-1.5 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors whitespace-nowrap flex-shrink-0"
-          >
-            <EmpIcon />
-            <span>Employés</span>
-          </Link>
         </div>
       </div>
 
