@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { format, addWeeks, subWeeks, startOfWeek, addDays, getMonth, getYear } from 'date-fns';
+import { format, addWeeks, subWeeks, startOfWeek, addDays, getMonth, getYear, startOfMonth, getDaysInMonth, getDay, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { EmployeeWeek, Employee } from '@/types';
 import { DAYS_FR } from '@/types';
@@ -23,6 +23,8 @@ export default function WeekCalendar({
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [loading, setLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
@@ -138,7 +140,85 @@ export default function WeekCalendar({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          <span className="text-sm font-medium text-slate-700 ml-1 capitalize">{weekLabel}</span>
+          {/* Week label — click to open mini calendar */}
+          <div className="relative ml-1">
+            <button
+              onClick={() => { setPickerMonth(startOfMonth(weekStart)); setShowPicker(p => !p); }}
+              className="text-sm font-medium text-slate-700 hover:text-celadon-600 transition-colors capitalize flex items-center gap-1"
+            >
+              {weekLabel}
+              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showPicker && (
+              <div
+                className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-3 w-64"
+                onMouseLeave={() => setShowPicker(false)}
+              >
+                {/* Month nav */}
+                <div className="flex items-center justify-between mb-2">
+                  <button onClick={() => setPickerMonth(m => subMonths(m, 1))} className="p-1 hover:bg-slate-100 rounded transition-colors">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <span className="text-sm font-semibold text-slate-700 capitalize">
+                    {format(pickerMonth, 'MMMM yyyy', { locale: fr })}
+                  </span>
+                  <button onClick={() => setPickerMonth(m => addMonths(m, 1))} className="p-1 hover:bg-slate-100 rounded transition-colors">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                {/* Day headers */}
+                <div className="grid grid-cols-7 mb-1">
+                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
+                    <div key={i} className="text-center text-[10px] font-medium text-slate-400 py-0.5">{d}</div>
+                  ))}
+                </div>
+                {/* Day grid */}
+                <div className="grid grid-cols-7 gap-px">
+                  {(() => {
+                    const firstDow = (getDay(pickerMonth) + 6) % 7;
+                    const total = getDaysInMonth(pickerMonth);
+                    const cells: React.ReactNode[] = [];
+                    for (let i = 0; i < firstDow; i++) cells.push(<div key={`e${i}`} />);
+                    for (let d = 1; d <= total; d++) {
+                      const date = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth(), d);
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      const wkStr = format(weekStart, 'yyyy-MM-dd');
+                      const wkEndStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+                      const todayStr = format(new Date(), 'yyyy-MM-dd');
+                      const inWeek = dateStr >= wkStr && dateStr <= wkEndStr;
+                      const isT = dateStr === todayStr;
+                      cells.push(
+                        <button
+                          key={d}
+                          onClick={() => {
+                            setWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
+                            setShowPicker(false);
+                          }}
+                          className={clsx(
+                            'text-xs rounded py-1 w-full transition-colors',
+                            inWeek
+                              ? 'bg-celadon-500 text-white font-semibold'
+                              : isT
+                              ? 'bg-taupe text-white font-semibold'
+                              : 'hover:bg-slate-100 text-slate-700'
+                          )}
+                        >
+                          {d}
+                        </button>
+                      );
+                    }
+                    return cells;
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

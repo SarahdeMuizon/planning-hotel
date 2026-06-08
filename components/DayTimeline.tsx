@@ -426,7 +426,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                               {leaveType === 'cm' ? 'Maladie' : 'Congés'}
                             </span>
                           ) : visuals.length > 0 ? (
-                            <span className="text-[10px] text-slate-400 text-center">
+                            <span className="text-[10px] text-white/70 text-center">
                               {visuals.map((v, vi) => (
                                 <span key={vi}>
                                   {vi > 0 && <br />}
