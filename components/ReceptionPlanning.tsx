@@ -37,7 +37,7 @@ function getWeekStart(date: Date): string {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 }
 
-export default function ReceptionPlanning() {
+export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boolean }) {
   const [weekDate, setWeekDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const weekStart = getWeekStart(weekDate);
 
@@ -152,21 +152,23 @@ export default function ReceptionPlanning() {
           <span className="text-sm font-semibold text-slate-700 ml-1 capitalize">{weekLabel}</span>
         </div>
 
-        <button
-          onClick={copyFromPrevWeek}
-          disabled={copying}
-          className="btn-secondary flex items-center gap-1.5 text-sm"
-          title="Copier le planning de la semaine précédente"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          {copying ? 'Copie…' : 'Copier sem. préc.'}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={copyFromPrevWeek}
+            disabled={copying}
+            className="btn-secondary flex items-center gap-1.5 text-sm"
+            title="Copier le planning de la semaine précédente"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            {copying ? 'Copie…' : 'Copier sem. préc.'}
+          </button>
+        )}
       </div>
 
-      {copyMsg && (
+      {!readOnly && copyMsg && (
         <div className="mb-3 text-sm px-3 py-2 rounded-lg bg-celadon-50 border border-celadon-200 text-celadon-700">
           {copyMsg}
         </div>
@@ -225,13 +227,19 @@ export default function ReceptionPlanning() {
                         )}
                       >
                         {isClosed ? (
-                          <button
-                            onClick={() => toggleClosed(dayIdx, slot)}
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                            title="Cliquer pour rouvrir"
-                          >
-                            Fermé ×
-                          </button>
+                          readOnly ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">
+                              Fermé
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => toggleClosed(dayIdx, slot)}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                              title="Cliquer pour rouvrir"
+                            >
+                              Fermé ×
+                            </button>
+                          )
                         ) : (
                           <div className="flex flex-wrap gap-1 min-h-[22px] items-start">
                             {asgns.map(a => (
@@ -241,16 +249,18 @@ export default function ReceptionPlanning() {
                                 style={{ backgroundColor: a.employee_color }}
                               >
                                 {a.employee_name.split(' ')[0]}
-                                <button
-                                  onClick={() => removeAssignment(a.id)}
-                                  className="opacity-40 hover:opacity-100 leading-none text-slate-700 ml-0.5"
-                                  title="Retirer"
-                                >
-                                  ×
-                                </button>
+                                {!readOnly && (
+                                  <button
+                                    onClick={() => removeAssignment(a.id)}
+                                    className="opacity-40 hover:opacity-100 leading-none text-slate-700 ml-0.5"
+                                    title="Retirer"
+                                  >
+                                    ×
+                                  </button>
+                                )}
                               </span>
                             ))}
-                            {available.length > 0 && (
+                            {!readOnly && available.length > 0 && (
                               <select
                                 defaultValue=""
                                 disabled={isSaving}
@@ -266,13 +276,18 @@ export default function ReceptionPlanning() {
                                 ))}
                               </select>
                             )}
-                            <button
-                              onClick={() => toggleClosed(dayIdx, slot)}
-                              className="text-[10px] text-red-300 hover:text-red-600 border border-dashed border-red-200 hover:border-red-400 rounded-full px-1.5 py-0.5 transition-colors"
-                              title="Fermer ce créneau"
-                            >
-                              Fermé
-                            </button>
+                            {!readOnly && (
+                              <button
+                                onClick={() => toggleClosed(dayIdx, slot)}
+                                className="text-[10px] text-red-300 hover:text-red-600 border border-dashed border-red-200 hover:border-red-400 rounded-full px-1.5 py-0.5 transition-colors"
+                                title="Fermer ce créneau"
+                              >
+                                Fermé
+                              </button>
+                            )}
+                            {readOnly && asgns.length === 0 && (
+                              <span className="text-[10px] text-slate-300">—</span>
+                            )}
                           </div>
                         )}
                       </td>

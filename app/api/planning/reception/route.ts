@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getManagerSession } from '@/lib/auth';
 
-// GET /api/planning/reception?weekStart=YYYY-MM-DD
+// GET /api/planning/reception?weekStart=YYYY-MM-DD — public (lecture seule pour employés)
 export async function GET(req: NextRequest) {
-  const auth = await getManagerSession();
-  if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-
   const { searchParams } = new URL(req.url);
   const weekStart = searchParams.get('weekStart');
   if (!weekStart) return NextResponse.json({ error: 'weekStart requis' }, { status: 400 });
