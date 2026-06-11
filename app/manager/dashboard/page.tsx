@@ -12,7 +12,7 @@ import ReceptionPlanning from '@/components/ReceptionPlanning';
 import { DEPARTMENTS } from '@/types';
 import clsx from 'clsx';
 
-type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'reception' | 'myplan';
+type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'planning' | 'myplan';
 
 const DEPT_TABS = [
   { value: '', label: 'Tous', color: 'slate' },
@@ -36,7 +36,7 @@ export default function DashboardPage() {
     }).catch(() => {});
   }, [view]);
 
-  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'timeclock' && view !== 'reception' && view !== 'myplan';
+  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'timeclock' && view !== 'planning' && view !== 'myplan';
 
   return (
     <div>
@@ -85,10 +85,10 @@ export default function DashboardPage() {
             badge={pendingCount}
           />
           <ViewTab
-            label="Réception"
+            label="Planning"
             icon={<ReceptionIcon />}
-            active={view === 'reception'}
-            onClick={() => setView('reception')}
+            active={view === 'planning'}
+            onClick={() => setView('planning')}
           />
           {employeeToken && (
             <ViewTab
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       {view === 'leaves'   && <PaidLeaveManager />}
       {view === 'requests' && <LeaveRequestsManager />}
       {view === 'timeclock'  && <TimeclockManager />}
-      {view === 'reception'  && <ReceptionPlanning />}
+      {view === 'planning'  && <ReceptionPlanning />}
       {view === 'myplan'     && employeeToken && <EmployeePlanning token={employeeToken} embedded />}
     </div>
   );

@@ -9,7 +9,7 @@ import ReceptionPlanning from './ReceptionPlanning';
 import type { Employee } from '@/types';
 import clsx from 'clsx';
 
-type EmpView = 'week' | 'day' | 'rest' | 'myplan' | 'reception';
+type EmpView = 'week' | 'day' | 'rest' | 'myplan' | 'planning';
 
 const DEPT_TABS = [
   { value: '', label: 'Tous' },
@@ -45,7 +45,7 @@ export default function EmployeeDashboard({ token }: { token: string }) {
     );
   }
 
-  const showDeptBar = view !== 'myplan' && view !== 'reception';
+  const showDeptBar = view !== 'myplan' && view !== 'planning';
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -77,7 +77,7 @@ export default function EmployeeDashboard({ token }: { token: string }) {
           <Tab label="Semaine"      icon={<WeekIcon />}       active={view === 'week'}      onClick={() => setView('week')} />
           <Tab label="Timeline"     icon={<DayIcon />}        active={view === 'day'}       onClick={() => setView('day')} />
           <Tab label="Repos"        icon={<RestIcon />}       active={view === 'rest'}      onClick={() => setView('rest')} />
-          <Tab label="Réception"    icon={<ReceptionIcon />}  active={view === 'reception'} onClick={() => setView('reception')} />
+          <Tab label="Planning"     icon={<ReceptionIcon />}  active={view === 'planning'} onClick={() => setView('planning')} />
           <Tab label="Mon planning" icon={<UserIcon />}       active={view === 'myplan'}    onClick={() => setView('myplan')} />
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function EmployeeDashboard({ token }: { token: string }) {
         {view === 'week'      && <WeekCalendar    readOnly fetchToken={token} department={department || undefined} />}
         {view === 'day'       && <DayTimeline              fetchToken={token} department={department || undefined} />}
         {view === 'rest'      && <RestDaysCalendar         fetchToken={token} department={department || undefined} />}
-        {view === 'reception' && <ReceptionPlanning readOnly />}
+        {view === 'planning' && <ReceptionPlanning readOnly />}
         {view === 'myplan'    && <EmployeePlanning token={token} embedded />}
       </div>
     </div>
