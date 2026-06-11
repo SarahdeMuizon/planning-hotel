@@ -259,7 +259,8 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     className={clsx(
                       'text-center py-1 select-none w-7 bg-celadon-500',
                       isToday && '!bg-taupe',
-                      isWeekend && 'border-l-2 border-white/30'
+                      dow === 5 && 'border-l-2 border-slate-300',
+                      dow === 6 && 'border-r-2 border-slate-300'
                     )}
                   >
                     <div className={clsx('text-xs font-bold', isToday ? 'text-white' : 'text-white')}>
@@ -334,7 +335,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     </td>
 
                     {/* Day cells */}
-                    {days.map(({ num, dateStr, isWeekend, isToday }) => {
+                    {days.map(({ num, dow, dateStr, isWeekend, isToday }) => {
                       const day: DaySchedule | undefined = row.days[dateStr];
                       const isLeave = day?.is_leave ?? false;
                       const isRest = !isLeave && (!day || day.is_off);
@@ -345,7 +346,8 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                           className={clsx(
                             'p-0 h-8',
                             isToday && 'ring-1 ring-inset ring-taupe-light',
-                            isWeekend && 'border-l-2 border-slate-200'
+                            dow === 5 && 'border-l-2 border-slate-300',
+                            dow === 6 && 'border-r-2 border-slate-300'
                           )}
                           title={isLeave
                             ? `${row.employee.name} — congés payés`
@@ -427,11 +429,11 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                   <td className="sticky left-0 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500">
                     En repos
                   </td>
-                  {days.map(({ num, dateStr, isWeekend }) => {
+                  {days.map(({ num, dow, dateStr, isWeekend }) => {
                     const count = visible.filter(r => !r.days[dateStr] || r.days[dateStr].is_off).length;
                     const ratio = count / visible.length;
                     return (
-                      <td key={num} className={clsx('text-center py-1', isWeekend && 'border-l-2 border-slate-200')}>
+                      <td key={num} className={clsx('text-center py-1', dow === 5 && 'border-l-2 border-slate-300', dow === 6 && 'border-r-2 border-slate-300')}>
                         {count > 0 && (
                           <span
                             className="text-[10px] font-bold"
