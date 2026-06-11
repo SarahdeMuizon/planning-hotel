@@ -33,10 +33,11 @@ interface ClosedSlot {
   slot: string;
 }
 
-type Zone = 'reception' | 'bar';
-const ZONES: { value: Zone; label: string }[] = [
-  { value: 'reception', label: 'Réception' },
-  { value: 'bar', label: 'Bar' },
+type Zone = 'reception' | 'bar' | 'spa';
+const ZONES: { value: Zone; label: string; activeClass: string }[] = [
+  { value: 'reception', label: 'Réception', activeClass: 'bg-celadon-500 border-celadon-500 text-white' },
+  { value: 'bar',       label: 'Bar',       activeClass: 'bg-amber-500 border-amber-500 text-white' },
+  { value: 'spa',       label: 'Spa',       activeClass: 'bg-purple-500 border-purple-500 text-white' },
 ];
 
 function getWeekStart(date: Date): string {
@@ -148,7 +149,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
             className={clsx(
               'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
               zone === z.value
-                ? 'bg-slate-700 text-white border-slate-700'
+                ? z.activeClass
                 : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
             )}
           >
