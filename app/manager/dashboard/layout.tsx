@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <Image src="/logo-riad.png" alt="Riad Anyssates" width={28} height={28} className="object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(22%) sepia(24%) saturate(609%) hue-rotate(122deg) brightness(88%) contrast(92%)' }} />
               Riad Anyssates
             </div>
-            <nav className="hidden sm:flex items-center gap-1">
+            <nav className="flex items-center gap-1">
               <Link href="/manager/dashboard" className="px-3 py-1.5 rounded-lg text-sm text-white/80 hover:text-white hover:bg-celadon-600 transition-colors">
                 Calendrier
               </Link>

@@ -102,10 +102,11 @@ async function initSchema(db: Client) {
     CREATE TABLE IF NOT EXISTS reception_planning (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       week_start TEXT NOT NULL,
+      day_of_week INTEGER NOT NULL DEFAULT 0,
       slot TEXT NOT NULL,
       employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
       created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(week_start, slot, employee_id)
+      UNIQUE(week_start, day_of_week, slot, employee_id)
     );
   `);
 
@@ -122,8 +123,40 @@ async function initSchema(db: Client) {
     "ALTER TABLE employees ADD COLUMN contract_end TEXT",
     "ALTER TABLE leave_requests ADD COLUMN certificate_data TEXT",
     "ALTER TABLE leave_requests ADD COLUMN certificate_name TEXT",
+    "ALTER TABLE reception_planning ADD COLUMN day_of_week INTEGER NOT NULL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* déjà présent */ }
+  }
+
+  await migrateReceptionPlanningConstraint(db);
+}
+
+async function migrateReceptionPlanningConstraint(db: Client) {
+  try {
+    const res = await db.execute(
+      `SELECT sql FROM sqlite_master WHERE type='table' AND name='reception_planning'`
+    );
+    if (!res.rows.length) return;
+    const normalizedSql = String(res.rows[0].sql || '').replace(/\s/g, '');
+    if (normalizedSql.includes('UNIQUE(week_start,day_of_week')) return;
+
+    await db.execute(`CREATE TABLE IF NOT EXISTS reception_planning_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_start TEXT NOT NULL,
+      day_of_week INTEGER NOT NULL DEFAULT 0,
+      slot TEXT NOT NULL,
+      employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(week_start, day_of_week, slot, employee_id)
+    )`);
+    await db.execute(
+      `INSERT OR IGNORE INTO reception_planning_new (id, week_start, day_of_week, slot, employee_id, created_at)
+       SELECT id, week_start, COALESCE(day_of_week, 0), slot, employee_id, created_at FROM reception_planning`
+    );
+    await db.execute('DROP TABLE reception_planning');
+    await db.execute('ALTER TABLE reception_planning_new RENAME TO reception_planning');
+  } catch (e) {
+    console.error('reception_planning migration error:', e);
   }
 }
