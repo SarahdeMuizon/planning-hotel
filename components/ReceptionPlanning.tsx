@@ -262,9 +262,9 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
                     key={i}
                     className={clsx(
                       'min-w-[120px] px-2 py-2 text-center font-semibold text-slate-600 border-r border-slate-100 last:border-r-0',
-                      i === 5 && 'border-l-2 border-slate-300',
-                      i === 6 && 'border-r-2 border-slate-300'
+                      i === 5 && 'border-l-2 border-slate-300'
                     )}
+                    style={i === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
                   >
                     <div>{day}</div>
                     <div className="text-[10px] font-normal text-slate-400">
@@ -294,9 +294,9 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
                         className={clsx(
                           'px-1.5 py-1.5 align-top border-r border-slate-100 last:border-r-0',
                           isClosed && 'bg-red-50',
-                          dayIdx === 5 && 'border-l-2 border-slate-300',
-                          dayIdx === 6 && 'border-r-2 border-slate-300'
+                          dayIdx === 5 && 'border-l-2 border-slate-300'
                         )}
+                        style={dayIdx === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
                       >
                         {isClosed ? (
                           readOnly ? (
