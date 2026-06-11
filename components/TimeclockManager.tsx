@@ -12,7 +12,7 @@ interface TimeclockRow {
   employee_name: string;
   employee_color: string;
   date: string;
-  type: 'arrival' | 'departure';
+  type: 'arrival' | 'departure' | 'arrival2' | 'departure2';
   clocked_at: string;
 }
 
@@ -20,11 +20,13 @@ interface EmployeeTimeclock {
   employee_id: number;
   employee_name: string;
   employee_color: string;
-  arrival: string | null;
-  departure: string | null;
+  arrival:    string | null;
+  departure:  string | null;
+  arrival2:   string | null;
+  departure2: string | null;
   scheduledStart: string | null;
-  scheduledEnd: string | null;
-  arrivalDiff: number | null;
+  scheduledEnd:   string | null;
+  arrivalDiff:   number | null;
   departureDiff: number | null;
 }
 
@@ -88,8 +90,7 @@ export default function TimeclockManager() {
         employee_id: row.employee.id,
         employee_name: row.employee.name,
         employee_color: row.employee.color,
-        arrival: null,
-        departure: null,
+        arrival: null, departure: null, arrival2: null, departure2: null,
         scheduledStart: day.start_time,
         scheduledEnd: day.end_time,
         arrivalDiff: null,
@@ -104,14 +105,16 @@ export default function TimeclockManager() {
           employee_id: e.employee_id,
           employee_name: e.employee_name,
           employee_color: e.employee_color,
-          arrival: null, departure: null,
+          arrival: null, departure: null, arrival2: null, departure2: null,
           scheduledStart: null, scheduledEnd: null,
           arrivalDiff: null, departureDiff: null,
         });
       }
       const m = map.get(e.employee_id)!;
-      if (e.type === 'arrival') m.arrival = e.clocked_at;
-      if (e.type === 'departure') m.departure = e.clocked_at;
+      if (e.type === 'arrival')    m.arrival    = e.clocked_at;
+      if (e.type === 'departure')  m.departure  = e.clocked_at;
+      if (e.type === 'arrival2')   m.arrival2   = e.clocked_at;
+      if (e.type === 'departure2') m.departure2 = e.clocked_at;
     }
 
     // Compute diffs
@@ -163,13 +166,13 @@ export default function TimeclockManager() {
             <thead>
               <tr className="bg-celadon-500 text-white text-sm">
                 <th className="py-3 px-4 text-left font-medium sticky left-0 bg-celadon-500 w-36">Employé</th>
-                <th className="py-3 px-3 text-center font-medium text-white/70 w-24">Prévu arrivée</th>
-                <th className="py-3 px-3 text-center font-medium w-24">Arrivée</th>
-                <th className="py-3 px-3 text-center font-medium text-white/70 w-20">Écart</th>
-                <th className="py-3 px-3 text-center font-medium text-white/70 w-24">Prévu départ</th>
-                <th className="py-3 px-3 text-center font-medium w-24">Départ</th>
-                <th className="py-3 px-3 text-center font-medium text-white/70 w-20">Écart</th>
-                <th className="py-3 px-3 text-center font-medium text-white/60 w-16">Actions</th>
+                <th className="py-3 px-3 text-center font-medium text-white/70 w-20" title="Horaire prévu">Prévu</th>
+                <th className="py-3 px-3 text-center font-medium w-20">Arrivée</th>
+                <th className="py-3 px-3 text-center font-medium w-20">Départ déj.</th>
+                <th className="py-3 px-3 text-center font-medium text-white/70 w-16">Écart</th>
+                <th className="py-3 px-3 text-center font-medium w-20">Retour</th>
+                <th className="py-3 px-3 text-center font-medium w-20">Départ soir</th>
+                <th className="py-3 px-3 text-center font-medium text-white/60 w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -186,12 +189,30 @@ export default function TimeclockManager() {
               ) : (
                 merged.map((row, i) => {
                   const arrDiff = diffLabel(row.scheduledStart, row.arrival);
-                  const depDiff = diffLabel(row.scheduledEnd, row.departure);
-                  const arrivalEntry = entries.find(e => e.employee_id === row.employee_id && e.type === 'arrival');
-                  const depEntry = entries.find(e => e.employee_id === row.employee_id && e.type === 'departure');
+                  const e1 = entries.find(e => e.employee_id === row.employee_id && e.type === 'arrival');
+                  const e2 = entries.find(e => e.employee_id === row.employee_id && e.type === 'departure');
+                  const e3 = entries.find(e => e.employee_id === row.employee_id && e.type === 'arrival2');
+                  const e4 = entries.find(e => e.employee_id === row.employee_id && e.type === 'departure2');
+                  const bg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                  const bgSticky = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                  function ClockCell({ time }: { time: string | null }) {
+                    return time
+                      ? <span className="text-sm font-semibold text-slate-800">{time}</span>
+                      : <span className="text-xs text-slate-200">—</span>;
+                  }
+                  function DelBtn({ entry }: { entry: typeof e1 }) {
+                    if (!entry) return null;
+                    return (
+                      <button onClick={() => handleDelete(entry.id)} disabled={deletingId === entry.id}
+                        className="text-[10px] text-slate-300 hover:text-red-500 px-0.5"
+                        title={`Supprimer ${entry.type}`}>
+                        {deletingId === entry.id ? '…' : '✕'}
+                      </button>
+                    );
+                  }
                   return (
-                    <tr key={row.employee_id} className={clsx('border-t border-slate-100', i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')}>
-                      <td className={clsx('py-3 px-4 sticky left-0', i % 2 === 0 ? 'bg-white' : 'bg-slate-50')}>
+                    <tr key={row.employee_id} className={clsx('border-t border-slate-100', bg)}>
+                      <td className={clsx('py-3 px-4 sticky left-0', bgSticky)}>
                         <div className="flex items-center gap-2">
                           <span className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-slate-800 text-[10px] font-bold"
                             style={{ backgroundColor: row.employee_color }}>
@@ -200,65 +221,40 @@ export default function TimeclockManager() {
                           <span className="text-sm font-medium text-slate-800 truncate max-w-[100px]">{row.employee_name}</span>
                         </div>
                       </td>
-                      {/* Planned start */}
-                      <td className="px-3 py-3 text-center text-sm text-slate-400">
-                        {row.scheduledStart ?? '—'}
+                      {/* Horaire prévu */}
+                      <td className="px-3 py-3 text-center text-xs text-slate-400 whitespace-nowrap">
+                        {row.scheduledStart && row.scheduledEnd
+                          ? <>{row.scheduledStart}<br/><span className="text-slate-300">→</span><br/>{row.scheduledEnd}</>
+                          : '—'}
                       </td>
-                      {/* Actual arrival */}
-                      <td className="px-3 py-3 text-center">
-                        {row.arrival ? (
-                          <span className="text-sm font-semibold text-slate-800">{row.arrival}</span>
-                        ) : (
-                          <span className="text-xs text-slate-300">—</span>
-                        )}
+                      {/* Arrivée matin */}
+                      <td className="px-3 py-2 text-center">
+                        <ClockCell time={row.arrival} />
+                        {arrDiff && <div className={clsx('text-[10px] mt-0.5', arrDiff.cls)}>{arrDiff.text}</div>}
                       </td>
-                      {/* Arrival diff */}
-                      <td className="px-3 py-3 text-center">
-                        {arrDiff ? (
-                          <span className={clsx('text-xs font-semibold', arrDiff.cls)}>{arrDiff.text}</span>
-                        ) : <span className="text-slate-200 text-xs">—</span>}
+                      {/* Départ déjeuner */}
+                      <td className="px-3 py-2 text-center">
+                        <ClockCell time={row.departure} />
                       </td>
-                      {/* Planned end */}
-                      <td className="px-3 py-3 text-center text-sm text-slate-400">
-                        {row.scheduledEnd ?? '—'}
+                      {/* Écart arrivée */}
+                      <td className="px-3 py-2 text-center">
+                        {arrDiff
+                          ? <span className={clsx('text-xs font-semibold', arrDiff.cls)}>{arrDiff.text}</span>
+                          : <span className="text-slate-200 text-xs">—</span>}
                       </td>
-                      {/* Actual departure */}
-                      <td className="px-3 py-3 text-center">
-                        {row.departure ? (
-                          <span className="text-sm font-semibold text-slate-800">{row.departure}</span>
-                        ) : (
-                          <span className="text-xs text-slate-300">—</span>
-                        )}
+                      {/* Retour déjeuner */}
+                      <td className="px-3 py-2 text-center">
+                        <ClockCell time={row.arrival2} />
                       </td>
-                      {/* Departure diff */}
-                      <td className="px-3 py-3 text-center">
-                        {depDiff ? (
-                          <span className={clsx('text-xs font-semibold', depDiff.cls)}>{depDiff.text}</span>
-                        ) : <span className="text-slate-200 text-xs">—</span>}
+                      {/* Départ soir */}
+                      <td className="px-3 py-2 text-center">
+                        <ClockCell time={row.departure2} />
                       </td>
-                      {/* Delete buttons */}
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {arrivalEntry && (
-                            <button
-                              onClick={() => handleDelete(arrivalEntry.id)}
-                              disabled={deletingId === arrivalEntry.id}
-                              title="Supprimer arrivée"
-                              className="text-[10px] text-slate-300 hover:text-red-500 px-1"
-                            >
-                              {deletingId === arrivalEntry.id ? '...' : '✕A'}
-                            </button>
-                          )}
-                          {depEntry && (
-                            <button
-                              onClick={() => handleDelete(depEntry.id)}
-                              disabled={deletingId === depEntry.id}
-                              title="Supprimer départ"
-                              className="text-[10px] text-slate-300 hover:text-red-500 px-1"
-                            >
-                              {deletingId === depEntry.id ? '...' : '✕D'}
-                            </button>
-                          )}
+                      {/* Suppression */}
+                      <td className="px-2 py-2 text-center">
+                        <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                          <DelBtn entry={e1} /><DelBtn entry={e2} />
+                          <DelBtn entry={e3} /><DelBtn entry={e4} />
                         </div>
                       </td>
                     </tr>
@@ -275,7 +271,8 @@ export default function TimeclockManager() {
             <span className="text-green-600 font-medium">À l'heure (≤5 min)</span>
             <span className="text-orange-500 font-medium">Léger retard (5–15 min)</span>
             <span className="text-red-600 font-medium">Retard (&gt;15 min)</span>
-            <span>Valeur négative = en avance</span>
+            <span>Négatif = en avance</span>
+            <span className="text-slate-400">Les colonnes Matin / Déj. / Retour / Soir correspondent aux 4 pointages possibles</span>
           </div>
         )}
       </div>

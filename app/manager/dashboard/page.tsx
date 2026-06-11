@@ -8,10 +8,11 @@ import PaidLeaveManager from '@/components/PaidLeaveManager';
 import LeaveRequestsManager from '@/components/LeaveRequestsManager';
 import EmployeePlanning from '@/components/EmployeePlanning';
 import TimeclockManager from '@/components/TimeclockManager';
+import ReceptionPlanning from '@/components/ReceptionPlanning';
 import { DEPARTMENTS } from '@/types';
 import clsx from 'clsx';
 
-type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'myplan';
+type View = 'week' | 'day' | 'rest' | 'leaves' | 'requests' | 'timeclock' | 'reception' | 'myplan';
 
 const DEPT_TABS = [
   { value: '', label: 'Tous', color: 'slate' },
@@ -35,7 +36,7 @@ export default function DashboardPage() {
     }).catch(() => {});
   }, [view]);
 
-  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'timeclock' && view !== 'myplan';
+  const showDeptBar = view !== 'leaves' && view !== 'requests' && view !== 'timeclock' && view !== 'reception' && view !== 'myplan';
 
   return (
     <div>
@@ -83,6 +84,12 @@ export default function DashboardPage() {
             onClick={() => setView('requests')}
             badge={pendingCount}
           />
+          <ViewTab
+            label="Réception" fullLabel="Planning Réception"
+            icon={<ReceptionIcon />}
+            active={view === 'reception'}
+            onClick={() => setView('reception')}
+          />
           {employeeToken && (
             <ViewTab
               label="Moi" fullLabel="Mon planning"
@@ -127,8 +134,9 @@ export default function DashboardPage() {
       {view === 'rest'     && <RestDaysCalendar department={department || undefined} />}
       {view === 'leaves'   && <PaidLeaveManager />}
       {view === 'requests' && <LeaveRequestsManager />}
-      {view === 'timeclock' && <TimeclockManager />}
-      {view === 'myplan'   && employeeToken && <EmployeePlanning token={employeeToken} embedded />}
+      {view === 'timeclock'  && <TimeclockManager />}
+      {view === 'reception'  && <ReceptionPlanning />}
+      {view === 'myplan'     && employeeToken && <EmployeePlanning token={employeeToken} embedded />}
     </div>
   );
 }
@@ -236,6 +244,14 @@ function EmpIcon() {
     <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+function ReceptionIcon() {
+  return (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
     </svg>
   );
 }

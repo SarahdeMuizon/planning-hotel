@@ -12,7 +12,7 @@ export interface Employee {
   created_at: string;
 }
 
-export type TimeclockType = 'arrival' | 'departure';
+export type TimeclockType = 'arrival' | 'departure' | 'arrival2' | 'departure2';
 
 export interface TimeclockEntry {
   id: number;

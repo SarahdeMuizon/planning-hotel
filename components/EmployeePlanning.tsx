@@ -81,20 +81,24 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
 
   // Timeclock state
   const todayStr = format(now, 'yyyy-MM-dd');
-  const [tcArrival, setTcArrival] = useState<string | null>(null);
-  const [tcDeparture, setTcDeparture] = useState<string | null>(null);
+  const [tcArrival,    setTcArrival]    = useState<string | null>(null);
+  const [tcDeparture,  setTcDeparture]  = useState<string | null>(null);
+  const [tcArrival2,   setTcArrival2]   = useState<string | null>(null);
+  const [tcDeparture2, setTcDeparture2] = useState<string | null>(null);
   const [tcLoading, setTcLoading] = useState(false);
 
   const loadTimeclock = useCallback(async () => {
     const res = await fetch(`/api/employee/${token}/timeclock?date=${todayStr}`);
     if (res.ok) {
       const rows: { type: string; clocked_at: string }[] = await res.json();
-      setTcArrival(rows.find(r => r.type === 'arrival')?.clocked_at ?? null);
+      setTcArrival(rows.find(r => r.type === 'arrival')?.clocked_at    ?? null);
       setTcDeparture(rows.find(r => r.type === 'departure')?.clocked_at ?? null);
+      setTcArrival2(rows.find(r => r.type === 'arrival2')?.clocked_at   ?? null);
+      setTcDeparture2(rows.find(r => r.type === 'departure2')?.clocked_at ?? null);
     }
   }, [token, todayStr]);
 
-  async function handleTimeclock(type: 'arrival' | 'departure') {
+  async function handleTimeclock(type: 'arrival' | 'departure' | 'arrival2' | 'departure2') {
     setTcLoading(true);
     const clockedAt = format(new Date(), 'HH:mm');
     await fetch(`/api/employee/${token}/timeclock`, {
@@ -234,42 +238,90 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
             Pointage — {format(now, 'd MMMM yyyy', { locale: fr })}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Arrival */}
-            <div className="text-center">
-              {tcArrival ? (
-                <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2.5">
-                  <div className="text-[10px] text-green-600 font-medium uppercase">Arrivée pointée</div>
-                  <div className="text-xl font-bold text-green-700 mt-0.5">{tcArrival}</div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleTimeclock('arrival')}
-                  disabled={tcLoading}
-                  className="w-full rounded-lg bg-celadon-500 hover:bg-celadon-700 text-white px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
-                >
-                  {tcLoading ? '...' : 'Pointer l\'arrivée'}
-                </button>
-              )}
-            </div>
-            {/* Departure */}
-            <div className="text-center">
-              {tcDeparture ? (
-                <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
-                  <div className="text-[10px] text-slate-500 font-medium uppercase">Départ pointé</div>
-                  <div className="text-xl font-bold text-slate-700 mt-0.5">{tcDeparture}</div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleTimeclock('departure')}
-                  disabled={tcLoading}
-                  className="w-full rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
-                >
-                  {tcLoading ? '...' : 'Pointer le départ'}
-                </button>
-              )}
+
+          {/* ── Matin ── */}
+          <div className="mb-2">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Matin</div>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Arrivée matin */}
+              <div className="text-center">
+                {tcArrival ? (
+                  <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2.5">
+                    <div className="text-[10px] text-green-600 font-medium uppercase">Arrivée</div>
+                    <div className="text-xl font-bold text-green-700 mt-0.5">{tcArrival}</div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleTimeclock('arrival')}
+                    disabled={tcLoading}
+                    className="w-full rounded-lg bg-celadon-500 hover:bg-celadon-700 text-white px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {tcLoading ? '...' : 'Arrivée'}
+                  </button>
+                )}
+              </div>
+              {/* Départ déjeuner */}
+              <div className="text-center">
+                {tcDeparture ? (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
+                    <div className="text-[10px] text-amber-600 font-medium uppercase">Départ déj.</div>
+                    <div className="text-xl font-bold text-amber-700 mt-0.5">{tcDeparture}</div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleTimeclock('departure')}
+                    disabled={tcLoading || !tcArrival}
+                    className="w-full rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {tcLoading ? '...' : 'Départ déj.'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* ── Après-midi (visible dès que departure est pointé) ── */}
+          {(tcDeparture || tcArrival2 || tcDeparture2) && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Après-midi</div>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Retour déjeuner */}
+                <div className="text-center">
+                  {tcArrival2 ? (
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5">
+                      <div className="text-[10px] text-blue-600 font-medium uppercase">Retour</div>
+                      <div className="text-xl font-bold text-blue-700 mt-0.5">{tcArrival2}</div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleTimeclock('arrival2')}
+                      disabled={tcLoading}
+                      className="w-full rounded-lg bg-celadon-500 hover:bg-celadon-700 text-white px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                    >
+                      {tcLoading ? '...' : 'Retour déj.'}
+                    </button>
+                  )}
+                </div>
+                {/* Départ soir */}
+                <div className="text-center">
+                  {tcDeparture2 ? (
+                    <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
+                      <div className="text-[10px] text-slate-500 font-medium uppercase">Départ soir</div>
+                      <div className="text-xl font-bold text-slate-700 mt-0.5">{tcDeparture2}</div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleTimeclock('departure2')}
+                      disabled={tcLoading || !tcArrival2}
+                      className="w-full rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
+                    >
+                      {tcLoading ? '...' : 'Départ soir'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Stats cards */}

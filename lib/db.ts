@@ -98,6 +98,15 @@ async function initSchema(db: Client) {
       read_at TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS reception_planning (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_start TEXT NOT NULL,
+      slot TEXT NOT NULL,
+      employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(week_start, slot, employee_id)
+    );
   `);
 
   // Migrations — colonnes ajoutées progressivement

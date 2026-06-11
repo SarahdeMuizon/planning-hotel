@@ -1,12 +1,15 @@
 /**
  * Opens a new window with print-ready HTML and triggers window.print().
  * Colors are preserved via print-color-adjust: exact.
+ *
+ * @param compact  true = mode portrait A4 compact (timeline mobile — une seule page)
  */
 export function openPrintWindow(
   title: string,
   subtitle: string,
   bodyHtml: string,
-  landscape = true
+  landscape = true,
+  compact = false,
 ) {
   const win = window.open('', '_blank');
   if (!win) {
@@ -22,11 +25,12 @@ export function openPrintWindow(
 <html lang="fr">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <style>
     @page {
-      size: A4 ${landscape ? 'landscape' : 'portrait'};
-      margin: 1.2cm 1cm;
+      size: A4 ${compact ? 'portrait' : landscape ? 'landscape' : 'portrait'};
+      margin: ${compact ? '0.6cm 0.5cm' : '1.2cm 1cm'};
     }
     * {
       box-sizing: border-box;
@@ -35,7 +39,7 @@ export function openPrintWindow(
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 10px;
+      font-size: ${compact ? '7px' : '10px'};
       color: #1e293b;
       margin: 0;
     }
@@ -57,52 +61,57 @@ export function openPrintWindow(
     table {
       border-collapse: collapse;
       width: 100%;
-      font-size: 9px;
+      font-size: ${compact ? '7px' : '9px'};
+      table-layout: ${compact ? 'fixed' : 'auto'};
     }
     thead th {
       background-color: #1e293b;
       color: #ffffff;
-      padding: 5px 3px;
+      padding: ${compact ? '2px 1px' : '5px 3px'};
       font-weight: 600;
       text-align: center;
       white-space: nowrap;
+      overflow: hidden;
     }
-    thead th.th-name { text-align: left; padding-left: 8px; }
+    thead th.th-name { text-align: left; padding-left: ${compact ? '4px' : '8px'}; }
     thead th.th-weekend { background-color: #334155; }
     thead th.th-today   { background-color: #1d4ed8; }
 
     tbody td {
       border: 1px solid #e2e8f0;
-      padding: 3px 2px;
+      padding: ${compact ? '0 1px' : '3px 2px'};
       text-align: center;
       vertical-align: middle;
-      height: 22px;
+      height: ${compact ? 'auto' : '22px'};
+      overflow: hidden;
     }
     tbody td.td-name {
       text-align: left;
-      padding-left: 6px;
+      padding-left: ${compact ? '4px' : '6px'};
       font-weight: 600;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     tbody tr:nth-child(even) td { background-color: #f8fafc; }
     tbody tr:nth-child(even) td.td-name { background-color: #f8fafc; }
 
     /* specific cell types */
     .cell-rest   { background-color: #f1f5f9; color: #94a3b8; }
-    .cell-off    { color: #94a3b8; font-size: 8px; }
+    .cell-off    { color: #94a3b8; font-size: ${compact ? '6px' : '8px'}; }
     .cell-total  { font-weight: 700; background-color: #f8fafc !important; }
-    .cell-count  { font-weight: 700; background-color: #f8fafc !important; font-size: 9px; }
+    .cell-count  { font-weight: 700; background-color: #f8fafc !important; font-size: ${compact ? '7px' : '9px'}; }
 
     tfoot td {
       border: 1px solid #e2e8f0;
       border-top: 2px solid #94a3b8;
-      padding: 3px 2px;
+      padding: ${compact ? '1px' : '3px 2px'};
       text-align: center;
       font-weight: 600;
       background-color: #f8fafc;
-      font-size: 9px;
+      font-size: ${compact ? '7px' : '9px'};
     }
-    tfoot td.td-name { text-align: left; padding-left: 6px; }
+    tfoot td.td-name { text-align: left; padding-left: ${compact ? '4px' : '6px'}; }
 
     /* ── Footer ── */
     .ph-footer {

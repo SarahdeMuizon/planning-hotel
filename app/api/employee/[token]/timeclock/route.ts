@@ -41,7 +41,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   const { type, clockedAt, date } = await req.json();
   if (!type || !clockedAt || !date) return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
-  if (type !== 'arrival' && type !== 'departure') return NextResponse.json({ error: 'Type invalide' }, { status: 400 });
+  const validTypes = ['arrival', 'departure', 'arrival2', 'departure2'];
+  if (!validTypes.includes(type)) return NextResponse.json({ error: 'Type invalide' }, { status: 400 });
 
   const db = await getDb();
 
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     args: [employee.id, date, type, clockedAt],
   });
 
-  const typeLabel = type === 'arrival' ? 'arrivée' : 'départ';
+  const typeLabel = type === 'arrival' ? 'arrivée matin' : type === 'departure' ? 'départ déjeuner' : type === 'arrival2' ? 'retour déjeuner' : 'départ soir';
   await db.execute({
     sql: `INSERT INTO notifications (type, employee_name, message) VALUES ('timeclock', ?, ?)`,
     args: [employee.name, `${employee.name} a pointé son ${typeLabel} à ${clockedAt}`],

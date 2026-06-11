@@ -272,6 +272,8 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
       `Timeline — ${dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}`,
       department || 'Tous les départements',
       html,
+      false,  // portrait
+      true,   // compact : tient sur une seule page A4 portrait / smartphone
     );
   }
 
