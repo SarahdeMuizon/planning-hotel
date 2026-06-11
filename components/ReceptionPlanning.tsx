@@ -332,7 +332,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
                                 )}
                               </span>
                             ))}
-                            {!readOnly && available.length > 0 && (
+                            {!readOnly && asgns.length === 0 && available.length > 0 && (
                               <select
                                 defaultValue=""
                                 disabled={isSaving}
