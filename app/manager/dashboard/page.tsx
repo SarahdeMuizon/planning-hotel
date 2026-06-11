@@ -85,7 +85,7 @@ export default function DashboardPage() {
             badge={pendingCount}
           />
           <ViewTab
-            label="Réception" fullLabel="Planning Réception"
+            label="Réception"
             icon={<ReceptionIcon />}
             active={view === 'reception'}
             onClick={() => setView('reception')}

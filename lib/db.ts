@@ -102,19 +102,21 @@ async function initSchema(db: Client) {
     CREATE TABLE IF NOT EXISTS reception_planning (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       week_start TEXT NOT NULL,
+      zone TEXT NOT NULL DEFAULT 'reception',
       day_of_week INTEGER NOT NULL DEFAULT 0,
       slot TEXT NOT NULL,
       employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
       created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(week_start, day_of_week, slot, employee_id)
+      UNIQUE(week_start, zone, day_of_week, slot, employee_id)
     );
 
     CREATE TABLE IF NOT EXISTS reception_closed (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       week_start TEXT NOT NULL,
+      zone TEXT NOT NULL DEFAULT 'reception',
       day_of_week INTEGER NOT NULL DEFAULT 0,
       slot TEXT NOT NULL,
-      UNIQUE(week_start, day_of_week, slot)
+      UNIQUE(week_start, zone, day_of_week, slot)
     );
   `);
 
@@ -132,12 +134,67 @@ async function initSchema(db: Client) {
     "ALTER TABLE leave_requests ADD COLUMN certificate_data TEXT",
     "ALTER TABLE leave_requests ADD COLUMN certificate_name TEXT",
     "ALTER TABLE reception_planning ADD COLUMN day_of_week INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE reception_planning ADD COLUMN zone TEXT NOT NULL DEFAULT 'reception'",
+    "ALTER TABLE reception_closed ADD COLUMN zone TEXT NOT NULL DEFAULT 'reception'",
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* déjà présent */ }
   }
 
   await migrateReceptionPlanningConstraint(db);
+  await migrateReceptionZones(db);
+}
+
+async function migrateReceptionZones(db: Client) {
+  // reception_planning — add zone to UNIQUE if not already present
+  try {
+    const res = await db.execute(`SELECT sql FROM sqlite_master WHERE type='table' AND name='reception_planning'`);
+    if (res.rows.length) {
+      const sql = String(res.rows[0].sql || '').replace(/\s/g, '');
+      if (!sql.includes('UNIQUE(week_start,zone')) {
+        await db.execute(`CREATE TABLE IF NOT EXISTS reception_planning_z (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          week_start TEXT NOT NULL,
+          zone TEXT NOT NULL DEFAULT 'reception',
+          day_of_week INTEGER NOT NULL DEFAULT 0,
+          slot TEXT NOT NULL,
+          employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
+          created_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(week_start, zone, day_of_week, slot, employee_id)
+        )`);
+        await db.execute(
+          `INSERT OR IGNORE INTO reception_planning_z (id, week_start, zone, day_of_week, slot, employee_id, created_at)
+           SELECT id, week_start, COALESCE(zone, 'reception'), day_of_week, slot, employee_id, created_at FROM reception_planning`
+        );
+        await db.execute('DROP TABLE reception_planning');
+        await db.execute('ALTER TABLE reception_planning_z RENAME TO reception_planning');
+      }
+    }
+  } catch (e) { console.error('reception_planning zone migration:', e); }
+
+  // reception_closed — add zone to UNIQUE if not already present
+  try {
+    const res = await db.execute(`SELECT sql FROM sqlite_master WHERE type='table' AND name='reception_closed'`);
+    if (res.rows.length) {
+      const sql = String(res.rows[0].sql || '').replace(/\s/g, '');
+      if (!sql.includes('UNIQUE(week_start,zone')) {
+        await db.execute(`CREATE TABLE IF NOT EXISTS reception_closed_z (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          week_start TEXT NOT NULL,
+          zone TEXT NOT NULL DEFAULT 'reception',
+          day_of_week INTEGER NOT NULL DEFAULT 0,
+          slot TEXT NOT NULL,
+          UNIQUE(week_start, zone, day_of_week, slot)
+        )`);
+        await db.execute(
+          `INSERT OR IGNORE INTO reception_closed_z (id, week_start, zone, day_of_week, slot)
+           SELECT id, week_start, COALESCE(zone, 'reception'), day_of_week, slot FROM reception_closed`
+        );
+        await db.execute('DROP TABLE reception_closed');
+        await db.execute('ALTER TABLE reception_closed_z RENAME TO reception_closed');
+      }
+    }
+  } catch (e) { console.error('reception_closed zone migration:', e); }
 }
 
 async function migrateReceptionPlanningConstraint(db: Client) {
@@ -147,7 +204,8 @@ async function migrateReceptionPlanningConstraint(db: Client) {
     );
     if (!res.rows.length) return;
     const normalizedSql = String(res.rows[0].sql || '').replace(/\s/g, '');
-    if (normalizedSql.includes('UNIQUE(week_start,day_of_week')) return;
+    // Skip if already has day_of_week or zone in UNIQUE (both are valid upgraded states)
+    if (normalizedSql.includes('UNIQUE(week_start,day_of_week') || normalizedSql.includes('UNIQUE(week_start,zone')) return;
 
     await db.execute(`CREATE TABLE IF NOT EXISTS reception_planning_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

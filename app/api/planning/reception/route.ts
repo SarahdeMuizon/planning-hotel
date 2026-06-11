@@ -2,22 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getManagerSession } from '@/lib/auth';
 
-// GET /api/planning/reception?weekStart=YYYY-MM-DD — public (lecture seule pour employés)
+// GET /api/planning/reception?weekStart=YYYY-MM-DD&zone=reception — public
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const weekStart = searchParams.get('weekStart');
+  const zone = searchParams.get('zone') || 'reception';
   if (!weekStart) return NextResponse.json({ error: 'weekStart requis' }, { status: 400 });
 
   const db = await getDb();
 
   const rows = await db.execute({
-    sql: `SELECT rp.id, rp.week_start, rp.day_of_week, rp.slot, rp.employee_id,
+    sql: `SELECT rp.id, rp.week_start, rp.zone, rp.day_of_week, rp.slot, rp.employee_id,
                  e.name as employee_name, e.color as employee_color
           FROM reception_planning rp
           LEFT JOIN employees e ON e.id = rp.employee_id
-          WHERE rp.week_start = ?
+          WHERE rp.week_start = ? AND rp.zone = ?
           ORDER BY rp.day_of_week, rp.slot, e.name`,
-    args: [weekStart],
+    args: [weekStart, zone],
   });
 
   const empRows = await db.execute({
@@ -26,8 +27,8 @@ export async function GET(req: NextRequest) {
   });
 
   const closedRows = await db.execute({
-    sql: 'SELECT day_of_week, slot FROM reception_closed WHERE week_start = ?',
-    args: [weekStart],
+    sql: 'SELECT day_of_week, slot FROM reception_closed WHERE week_start = ? AND zone = ?',
+    args: [weekStart, zone],
   });
 
   return NextResponse.json({
@@ -37,12 +38,12 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// POST /api/planning/reception  { weekStart, slot, dayOfWeek, employeeId }
+// POST /api/planning/reception  { weekStart, zone, slot, dayOfWeek, employeeId }
 export async function POST(req: NextRequest) {
   const auth = await getManagerSession();
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { weekStart, slot, dayOfWeek, employeeId } = await req.json();
+  const { weekStart, zone = 'reception', slot, dayOfWeek, employeeId } = await req.json();
   if (!weekStart || !slot || dayOfWeek === undefined || !employeeId) {
     return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
   }
@@ -50,9 +51,9 @@ export async function POST(req: NextRequest) {
   const db = await getDb();
   try {
     const result = await db.execute({
-      sql: `INSERT INTO reception_planning (week_start, day_of_week, slot, employee_id)
-            VALUES (?, ?, ?, ?) RETURNING *`,
-      args: [weekStart, dayOfWeek, slot, employeeId],
+      sql: `INSERT INTO reception_planning (week_start, zone, day_of_week, slot, employee_id)
+            VALUES (?, ?, ?, ?, ?) RETURNING *`,
+      args: [weekStart, zone, dayOfWeek, slot, employeeId],
     });
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch {
@@ -79,7 +80,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await getManagerSession();
   if (!auth) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { weekStart } = await req.json();
+  const { weekStart, zone = 'reception' } = await req.json();
   if (!weekStart) return NextResponse.json({ error: 'weekStart requis' }, { status: 400 });
 
   const current = new Date(weekStart + 'T00:00:00');
@@ -89,8 +90,8 @@ export async function PATCH(req: NextRequest) {
   const db = await getDb();
 
   const prev = await db.execute({
-    sql: 'SELECT day_of_week, slot, employee_id FROM reception_planning WHERE week_start = ?',
-    args: [prevWeekStart],
+    sql: 'SELECT day_of_week, slot, employee_id FROM reception_planning WHERE week_start = ? AND zone = ?',
+    args: [prevWeekStart, zone],
   });
 
   if (prev.rows.length === 0) {
@@ -98,30 +99,30 @@ export async function PATCH(req: NextRequest) {
   }
 
   await db.execute({
-    sql: 'DELETE FROM reception_planning WHERE week_start = ?',
-    args: [weekStart],
+    sql: 'DELETE FROM reception_planning WHERE week_start = ? AND zone = ?',
+    args: [weekStart, zone],
   });
 
   for (const row of prev.rows) {
     try {
       await db.execute({
-        sql: 'INSERT INTO reception_planning (week_start, day_of_week, slot, employee_id) VALUES (?, ?, ?, ?)',
-        args: [weekStart, row.day_of_week as number, row.slot as string, row.employee_id as number],
+        sql: 'INSERT INTO reception_planning (week_start, zone, day_of_week, slot, employee_id) VALUES (?, ?, ?, ?, ?)',
+        args: [weekStart, zone, row.day_of_week as number, row.slot as string, row.employee_id as number],
       });
     } catch { /* skip duplicates */ }
   }
 
-  // Also copy closed slots
+  // Copy closed slots
   const prevClosed = await db.execute({
-    sql: 'SELECT day_of_week, slot FROM reception_closed WHERE week_start = ?',
-    args: [prevWeekStart],
+    sql: 'SELECT day_of_week, slot FROM reception_closed WHERE week_start = ? AND zone = ?',
+    args: [prevWeekStart, zone],
   });
-  await db.execute({ sql: 'DELETE FROM reception_closed WHERE week_start = ?', args: [weekStart] });
+  await db.execute({ sql: 'DELETE FROM reception_closed WHERE week_start = ? AND zone = ?', args: [weekStart, zone] });
   for (const row of prevClosed.rows) {
     try {
       await db.execute({
-        sql: 'INSERT OR IGNORE INTO reception_closed (week_start, day_of_week, slot) VALUES (?, ?, ?)',
-        args: [weekStart, row.day_of_week as number, row.slot as string],
+        sql: 'INSERT OR IGNORE INTO reception_closed (week_start, zone, day_of_week, slot) VALUES (?, ?, ?, ?)',
+        args: [weekStart, zone, row.day_of_week as number, row.slot as string],
       });
     } catch { /* skip */ }
   }

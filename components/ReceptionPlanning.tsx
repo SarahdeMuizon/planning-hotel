@@ -33,6 +33,12 @@ interface ClosedSlot {
   slot: string;
 }
 
+type Zone = 'reception' | 'bar';
+const ZONES: { value: Zone; label: string }[] = [
+  { value: 'reception', label: 'Réception' },
+  { value: 'bar', label: 'Bar' },
+];
+
 function getWeekStart(date: Date): string {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 }
@@ -40,6 +46,7 @@ function getWeekStart(date: Date): string {
 export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boolean }) {
   const [weekDate, setWeekDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const weekStart = getWeekStart(weekDate);
+  const [zone, setZone] = useState<Zone>('reception');
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -51,9 +58,9 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(new Date()));
 
-  const load = useCallback(async (ws: string) => {
+  const load = useCallback(async (ws: string, z: Zone) => {
     setLoading(true);
-    const res = await fetch(`/api/planning/reception?weekStart=${ws}`);
+    const res = await fetch(`/api/planning/reception?weekStart=${ws}&zone=${z}`);
     if (res.ok) {
       const data = await res.json();
       setAssignments(data.assignments);
@@ -65,7 +72,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(weekStart); }, [weekStart, load]);
+  useEffect(() => { load(weekStart, zone); }, [weekStart, zone, load]);
 
   function cellAssignments(dayOfWeek: number, slot: string): Assignment[] {
     return assignments.filter(a => a.day_of_week === dayOfWeek && a.slot === slot);
@@ -77,9 +84,9 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
     await fetch('/api/planning/reception', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weekStart, slot, dayOfWeek, employeeId }),
+      body: JSON.stringify({ weekStart, zone, slot, dayOfWeek, employeeId }),
     });
-    await load(weekStart);
+    await load(weekStart, zone);
     setSaving(null);
   }
 
@@ -92,7 +99,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
     const key = `${dayOfWeek}-${slot}`;
     if (closedCells.has(key)) {
       await fetch(
-        `/api/planning/reception/closed?weekStart=${weekStart}&dayOfWeek=${dayOfWeek}&slot=${encodeURIComponent(slot)}`,
+        `/api/planning/reception/closed?weekStart=${weekStart}&zone=${zone}&dayOfWeek=${dayOfWeek}&slot=${encodeURIComponent(slot)}`,
         { method: 'DELETE' }
       );
       setClosedCells(prev => { const next = new Set(prev); next.delete(key); return next; });
@@ -100,7 +107,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
       await fetch('/api/planning/reception/closed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weekStart, dayOfWeek, slot }),
+        body: JSON.stringify({ weekStart, zone, dayOfWeek, slot }),
       });
       setClosedCells(prev => new Set([...prev, key]));
     }
@@ -112,12 +119,12 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
     const res = await fetch('/api/planning/reception', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weekStart }),
+      body: JSON.stringify({ weekStart, zone }),
     });
     if (res.ok) {
       const data = await res.json();
       setCopyMsg(`${data.copied} créneaux copiés depuis la semaine précédente.`);
-      await load(weekStart);
+      await load(weekStart, zone);
     } else {
       const data = await res.json();
       setCopyMsg(data.error || 'Erreur lors de la copie.');
@@ -132,6 +139,24 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
 
   return (
     <div className="p-4">
+      {/* Zone sub-tabs */}
+      <div className="flex items-center gap-2 mb-4">
+        {ZONES.map(z => (
+          <button
+            key={z.value}
+            onClick={() => setZone(z.value)}
+            className={clsx(
+              'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+              zone === z.value
+                ? 'bg-slate-700 text-white border-slate-700'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+            )}
+          >
+            {z.label}
+          </button>
+        ))}
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
