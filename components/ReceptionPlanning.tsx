@@ -5,11 +5,6 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, startOfMonth, getDays
 import { fr } from 'date-fns/locale';
 import clsx from 'clsx';
 
-const SLOTS: string[] = [];
-for (let h = 7; h <= 22; h++) {
-  SLOTS.push(`${String(h).padStart(2, '0')}:00`);
-}
-
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 interface Assignment {
@@ -33,12 +28,31 @@ interface ClosedSlot {
   slot: string;
 }
 
-type Zone = 'reception' | 'bar' | 'spa';
+type Zone = 'reception' | 'bar-terrasse' | 'bar-piscine' | 'spa';
 const ZONES: { value: Zone; label: string; activeClass: string }[] = [
-  { value: 'reception', label: 'Réception', activeClass: 'bg-celadon-500 border-celadon-500 text-white' },
-  { value: 'bar',       label: 'Bar',       activeClass: 'bg-amber-500 border-amber-500 text-white' },
-  { value: 'spa',       label: 'Spa',       activeClass: 'bg-purple-500 border-purple-500 text-white' },
+  { value: 'reception',    label: 'Réception',    activeClass: 'bg-celadon-500 border-celadon-500 text-white' },
+  { value: 'bar-terrasse', label: 'Bar Terrasse', activeClass: 'bg-amber-500 border-amber-500 text-white' },
+  { value: 'bar-piscine',  label: 'Bar Piscine',  activeClass: 'bg-amber-600 border-amber-600 text-white' },
+  { value: 'spa',          label: 'Spa',          activeClass: 'bg-purple-500 border-purple-500 text-white' },
 ];
+
+function getSlotsForZone(zone: Zone): string[] {
+  if (zone === 'spa') {
+    const slots: string[] = [];
+    let h = 9, m = 30;
+    while (h < 21 || (h === 21 && m === 0)) {
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+      m += 30;
+      if (m === 60) { m = 0; h++; }
+    }
+    return slots;
+  }
+  if (zone === 'bar-terrasse' || zone === 'bar-piscine') {
+    return Array.from({ length: 6 }, (_, i) => `${String(17 + i).padStart(2, '0')}:00`);
+  }
+  // reception : 07:00 à 22:00
+  return Array.from({ length: 16 }, (_, i) => `${String(7 + i).padStart(2, '0')}:00`);
+}
 
 function getWeekStart(date: Date): string {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -48,6 +62,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
   const [weekDate, setWeekDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const weekStart = getWeekStart(weekDate);
   const [zone, setZone] = useState<Zone>('reception');
+  const slots = getSlotsForZone(zone);
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -301,7 +316,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {SLOTS.map(slot => (
+              {slots.map(slot => (
                 <tr key={slot} className="hover:bg-slate-50/50 transition-colors">
                   <td className="sticky left-0 z-10 bg-white w-14 px-2 py-2 text-slate-600 font-semibold border-r border-slate-200 text-center align-top pt-2.5 text-[11px]">
                     {slot}
