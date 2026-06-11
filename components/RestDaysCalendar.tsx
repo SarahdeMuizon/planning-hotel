@@ -259,9 +259,9 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     className={clsx(
                       'text-center py-1 select-none w-7 bg-celadon-500',
                       isToday && '!bg-taupe',
-                      dow === 5 && 'border-l-2 border-slate-300',
-                      dow === 6 && 'border-r-2 border-slate-300'
+                      dow === 5 && 'border-l-2 border-slate-300'
                     )}
+                    style={dow === 5 ? { borderRight: 'none' } : dow === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
                   >
                     <div className={clsx('text-xs font-bold', isToday ? 'text-white' : 'text-white')}>
                       {num}
@@ -346,9 +346,9 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                           className={clsx(
                             'p-0 h-8',
                             isToday && 'ring-1 ring-inset ring-taupe-light',
-                            dow === 5 && 'border-l-2 border-slate-300',
-                            dow === 6 && 'border-r-2 border-slate-300'
+                            dow === 5 && 'border-l-2 border-slate-300'
                           )}
+                          style={dow === 5 ? { borderRight: 'none' } : dow === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
                           title={isLeave
                             ? `${row.employee.name} — congés payés`
                             : isRest
@@ -433,7 +433,11 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     const count = visible.filter(r => !r.days[dateStr] || r.days[dateStr].is_off).length;
                     const ratio = count / visible.length;
                     return (
-                      <td key={num} className={clsx('text-center py-1', dow === 5 && 'border-l-2 border-slate-300', dow === 6 && 'border-r-2 border-slate-300')}>
+                      <td
+                        key={num}
+                        className={clsx('text-center py-1', dow === 5 && 'border-l-2 border-slate-300')}
+                        style={dow === 5 ? { borderRight: 'none' } : dow === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
+                      >
                         {count > 0 && (
                           <span
                             className="text-[10px] font-bold"

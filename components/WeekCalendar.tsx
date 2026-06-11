@@ -257,9 +257,9 @@ export default function WeekCalendar({
                       className={clsx(
                         'py-3 px-2 text-center text-sm font-medium',
                         isToday ? 'bg-taupe' : '',
-                        i === 5 && 'border-l-2 border-slate-300',
-                        i === 6 && 'border-r-2 border-slate-300'
+                        i === 5 && 'border-l-2 border-slate-300'
                       )}
+                      style={i === 5 ? { borderRight: 'none' } : i === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
                     >
                       <div>{DAYS_FR[i]}</div>
                       <div className="text-xs font-normal opacity-80">
@@ -325,9 +325,9 @@ export default function WeekCalendar({
                           className={clsx(
                             'py-1 px-1 text-center',
                             isToday && 'ring-1 ring-inset ring-taupe-light',
-                            dayIdx === 5 && 'border-l-2 border-slate-300',
-                            dayIdx === 6 && 'border-r-2 border-slate-300'
+                            dayIdx === 5 && 'border-l-2 border-slate-300'
                           )}
+                          style={dayIdx === 5 ? { borderRight: 'none' } : dayIdx === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
                         >
                           <button
                             onClick={() => !isLeave && !readOnly && openModal(row.employee, dateStr, dayIdx)}
