@@ -256,7 +256,8 @@ export default function WeekCalendar({
                       key={i}
                       className={clsx(
                         'py-3 px-2 text-center text-sm font-medium',
-                        isToday ? 'bg-taupe' : i >= 5 ? 'bg-celadon-600' : ''
+                        isToday ? 'bg-taupe' : '',
+                        i >= 5 && 'border-l-2 border-white/30'
                       )}
                     >
                       <div>{DAYS_FR[i]}</div>
@@ -323,7 +324,7 @@ export default function WeekCalendar({
                           className={clsx(
                             'py-1 px-1 text-center',
                             isToday && 'ring-1 ring-inset ring-taupe-light',
-                            dayIdx >= 5 && 'bg-slate-100'
+                            dayIdx >= 5 && 'border-l-2 border-slate-300'
                           )}
                         >
                           <button

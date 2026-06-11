@@ -257,9 +257,9 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                   <th
                     key={num}
                     className={clsx(
-                      'text-center py-1 select-none w-7',
-                      isWeekend ? 'bg-celadon-600' : 'bg-celadon-500',
-                      isToday && '!bg-taupe'
+                      'text-center py-1 select-none w-7 bg-celadon-500',
+                      isToday && '!bg-taupe',
+                      isWeekend && 'border-l-2 border-white/30'
                     )}
                   >
                     <div className={clsx('text-xs font-bold', isToday ? 'text-white' : 'text-white')}>
@@ -344,8 +344,8 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                           key={num}
                           className={clsx(
                             'p-0 h-8',
-                            isWeekend && !isRest && !isLeave && 'bg-slate-50/60',
-                            isToday && 'ring-1 ring-inset ring-taupe-light'
+                            isToday && 'ring-1 ring-inset ring-taupe-light',
+                            isWeekend && 'border-l-2 border-slate-200'
                           )}
                           title={isLeave
                             ? `${row.employee.name} — congés payés`
@@ -431,7 +431,7 @@ export default function RestDaysCalendar({ department, fetchToken }: { departmen
                     const count = visible.filter(r => !r.days[dateStr] || r.days[dateStr].is_off).length;
                     const ratio = count / visible.length;
                     return (
-                      <td key={num} className={clsx('text-center py-1', isWeekend && 'bg-slate-100/50')}>
+                      <td key={num} className={clsx('text-center py-1', isWeekend && 'border-l-2 border-slate-200')}>
                         {count > 0 && (
                           <span
                             className="text-[10px] font-bold"
