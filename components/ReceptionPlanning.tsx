@@ -5,6 +5,7 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, startOfMonth, getDays
 import { fr } from 'date-fns/locale';
 import clsx from 'clsx';
 
+// zones avec horaires dynamiques
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 interface Assignment {
