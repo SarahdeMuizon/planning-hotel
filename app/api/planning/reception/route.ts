@@ -28,9 +28,15 @@ export async function GET(req: NextRequest) {
     args: [],
   });
 
+  const closedRows = await db.execute({
+    sql: 'SELECT day_of_week, slot FROM reception_closed WHERE week_start = ?',
+    args: [weekStart],
+  });
+
   return NextResponse.json({
     assignments: rows.rows,
     employees: empRows.rows,
+    closedSlots: closedRows.rows,
   });
 }
 
@@ -106,6 +112,21 @@ export async function PATCH(req: NextRequest) {
         args: [weekStart, row.day_of_week as number, row.slot as string, row.employee_id as number],
       });
     } catch { /* skip duplicates */ }
+  }
+
+  // Also copy closed slots
+  const prevClosed = await db.execute({
+    sql: 'SELECT day_of_week, slot FROM reception_closed WHERE week_start = ?',
+    args: [prevWeekStart],
+  });
+  await db.execute({ sql: 'DELETE FROM reception_closed WHERE week_start = ?', args: [weekStart] });
+  for (const row of prevClosed.rows) {
+    try {
+      await db.execute({
+        sql: 'INSERT OR IGNORE INTO reception_closed (week_start, day_of_week, slot) VALUES (?, ?, ?)',
+        args: [weekStart, row.day_of_week as number, row.slot as string],
+      });
+    } catch { /* skip */ }
   }
 
   return NextResponse.json({ ok: true, copied: prev.rows.length });

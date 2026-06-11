@@ -108,6 +108,14 @@ async function initSchema(db: Client) {
       created_at TEXT DEFAULT (datetime('now')),
       UNIQUE(week_start, day_of_week, slot, employee_id)
     );
+
+    CREATE TABLE IF NOT EXISTS reception_closed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_start TEXT NOT NULL,
+      day_of_week INTEGER NOT NULL DEFAULT 0,
+      slot TEXT NOT NULL,
+      UNIQUE(week_start, day_of_week, slot)
+    );
   `);
 
   // Migrations — colonnes ajoutées progressivement

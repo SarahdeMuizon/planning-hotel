@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import clsx from 'clsx';
 
 const SLOTS: string[] = [];
-for (let h = 7; h <= 23; h++) {
+for (let h = 7; h <= 22; h++) {
   SLOTS.push(`${String(h).padStart(2, '0')}:00`);
 }
 
@@ -27,6 +28,11 @@ interface Employee {
   color: string;
 }
 
+interface ClosedSlot {
+  day_of_week: number;
+  slot: string;
+}
+
 function getWeekStart(date: Date): string {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 }
@@ -37,6 +43,7 @@ export default function ReceptionPlanning() {
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [closedCells, setClosedCells] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
@@ -49,6 +56,9 @@ export default function ReceptionPlanning() {
       const data = await res.json();
       setAssignments(data.assignments);
       setEmployees(data.employees);
+      setClosedCells(new Set(
+        (data.closedSlots as ClosedSlot[]).map(c => `${c.day_of_week}-${c.slot}`)
+      ));
     }
     setLoading(false);
   }, []);
@@ -74,6 +84,24 @@ export default function ReceptionPlanning() {
   async function removeAssignment(id: number) {
     await fetch(`/api/planning/reception?id=${id}`, { method: 'DELETE' });
     setAssignments(prev => prev.filter(a => a.id !== id));
+  }
+
+  async function toggleClosed(dayOfWeek: number, slot: string) {
+    const key = `${dayOfWeek}-${slot}`;
+    if (closedCells.has(key)) {
+      await fetch(
+        `/api/planning/reception/closed?weekStart=${weekStart}&dayOfWeek=${dayOfWeek}&slot=${encodeURIComponent(slot)}`,
+        { method: 'DELETE' }
+      );
+      setClosedCells(prev => { const next = new Set(prev); next.delete(key); return next; });
+    } else {
+      await fetch('/api/planning/reception/closed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekStart, dayOfWeek, slot }),
+      });
+      setClosedCells(prev => new Set([...prev, key]));
+    }
   }
 
   async function copyFromPrevWeek() {
@@ -156,7 +184,13 @@ export default function ReceptionPlanning() {
                   Heure
                 </th>
                 {DAYS.map((day, i) => (
-                  <th key={i} className="min-w-[120px] px-2 py-2 text-center font-semibold text-slate-600 border-r border-slate-100 last:border-r-0">
+                  <th
+                    key={i}
+                    className={clsx(
+                      'min-w-[120px] px-2 py-2 text-center font-semibold text-slate-600 border-r border-slate-100 last:border-r-0',
+                      i >= 5 && 'border-l-2 border-slate-300'
+                    )}
+                  >
                     <div>{day}</div>
                     <div className="text-[10px] font-normal text-slate-400">
                       {format(weekDates[i], 'd MMM', { locale: fr })}
@@ -172,48 +206,73 @@ export default function ReceptionPlanning() {
                     {slot}
                   </td>
                   {DAYS.map((_, dayIdx) => {
+                    const cellKey = `${dayIdx}-${slot}`;
+                    const isClosed = closedCells.has(cellKey);
                     const asgns = cellAssignments(dayIdx, slot);
                     const assignedIds = new Set(asgns.map(a => a.employee_id));
                     const available = employees.filter(e => !assignedIds.has(e.id));
-                    const cellKey = `${dayIdx}-${slot}`;
                     const isSaving = saving === cellKey;
 
                     return (
-                      <td key={dayIdx} className="px-1.5 py-1.5 align-top border-r border-slate-100 last:border-r-0">
-                        <div className="flex flex-wrap gap-1 min-h-[22px] items-start">
-                          {asgns.map(a => (
-                            <span
-                              key={a.id}
-                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-slate-800"
-                              style={{ backgroundColor: a.employee_color }}
-                            >
-                              {a.employee_name.split(' ')[0]}
-                              <button
-                                onClick={() => removeAssignment(a.id)}
-                                className="opacity-40 hover:opacity-100 leading-none text-slate-700 ml-0.5"
-                                title="Retirer"
+                      <td
+                        key={dayIdx}
+                        className={clsx(
+                          'px-1.5 py-1.5 align-top border-r border-slate-100 last:border-r-0',
+                          isClosed && 'bg-red-50',
+                          dayIdx >= 5 && 'border-l-2 border-slate-300'
+                        )}
+                      >
+                        {isClosed ? (
+                          <button
+                            onClick={() => toggleClosed(dayIdx, slot)}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                            title="Cliquer pour rouvrir"
+                          >
+                            Fermé ×
+                          </button>
+                        ) : (
+                          <div className="flex flex-wrap gap-1 min-h-[22px] items-start">
+                            {asgns.map(a => (
+                              <span
+                                key={a.id}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-slate-800"
+                                style={{ backgroundColor: a.employee_color }}
                               >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                          {available.length > 0 && (
-                            <select
-                              defaultValue=""
-                              disabled={isSaving}
-                              onChange={e => {
-                                const id = Number(e.target.value);
-                                if (id) { addEmployee(dayIdx, slot, id); e.target.value = ''; }
-                              }}
-                              className="text-[10px] border border-dashed border-slate-300 rounded-full px-1.5 py-0.5 text-slate-400 bg-white cursor-pointer hover:border-celadon-400 hover:text-celadon-600 appearance-none transition-colors focus:outline-none disabled:opacity-50"
+                                {a.employee_name.split(' ')[0]}
+                                <button
+                                  onClick={() => removeAssignment(a.id)}
+                                  className="opacity-40 hover:opacity-100 leading-none text-slate-700 ml-0.5"
+                                  title="Retirer"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                            {available.length > 0 && (
+                              <select
+                                defaultValue=""
+                                disabled={isSaving}
+                                onChange={e => {
+                                  const id = Number(e.target.value);
+                                  if (id) { addEmployee(dayIdx, slot, id); e.target.value = ''; }
+                                }}
+                                className="text-[10px] border border-dashed border-slate-300 rounded-full px-1.5 py-0.5 text-slate-400 bg-white cursor-pointer hover:border-celadon-400 hover:text-celadon-600 appearance-none transition-colors focus:outline-none disabled:opacity-50"
+                              >
+                                <option value="" disabled>+</option>
+                                {available.map(emp => (
+                                  <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              onClick={() => toggleClosed(dayIdx, slot)}
+                              className="text-[10px] text-red-300 hover:text-red-600 border border-dashed border-red-200 hover:border-red-400 rounded-full px-1.5 py-0.5 transition-colors"
+                              title="Fermer ce créneau"
                             >
-                              <option value="" disabled>+</option>
-                              {available.map(emp => (
-                                <option key={emp.id} value={emp.id}>{emp.name}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
+                              Fermé
+                            </button>
+                          </div>
+                        )}
                       </td>
                     );
                   })}
