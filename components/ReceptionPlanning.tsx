@@ -29,25 +29,19 @@ interface ClosedSlot {
   slot: string;
 }
 
-type Zone = 'reception' | 'bar-terrasse' | 'bar-piscine' | 'spa';
+interface OffDay {
+  employee_id: number;
+  day_of_week: number;
+}
+
+type Zone = 'reception' | 'bar-terrasse' | 'bar-piscine';
 const ZONES: { value: Zone; label: string; activeClass: string }[] = [
   { value: 'reception',    label: 'Réception',    activeClass: 'bg-celadon-500 border-celadon-500 text-white' },
   { value: 'bar-terrasse', label: 'Bar Terrasse', activeClass: 'bg-amber-500 border-amber-500 text-white' },
   { value: 'bar-piscine',  label: 'Bar Piscine',  activeClass: 'bg-amber-600 border-amber-600 text-white' },
-  { value: 'spa',          label: 'Spa',          activeClass: 'bg-purple-500 border-purple-500 text-white' },
 ];
 
 function getSlotsForZone(zone: Zone): string[] {
-  if (zone === 'spa') {
-    const slots: string[] = [];
-    let h = 9, m = 30;
-    while (h < 21 || (h === 21 && m === 0)) {
-      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-      m += 30;
-      if (m === 60) { m = 0; h++; }
-    }
-    return slots;
-  }
   if (zone === 'bar-terrasse' || zone === 'bar-piscine') {
     return Array.from({ length: 6 }, (_, i) => `${String(17 + i).padStart(2, '0')}:00`);
   }
@@ -59,6 +53,28 @@ function getWeekStart(date: Date): string {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 }
 
+/** Calcule les rowSpans pour les cellules fermées consécutives d'une colonne */
+function computeColRowSpans(slots: string[], dayIdx: number, closedCells: Set<string>): { rowSpan: number; skip: boolean }[] {
+  const result = slots.map(() => ({ rowSpan: 1, skip: false }));
+  let i = 0;
+  while (i < slots.length) {
+    if (closedCells.has(`${dayIdx}-${slots[i]}`)) {
+      let j = i + 1;
+      while (j < slots.length && closedCells.has(`${dayIdx}-${slots[j]}`)) j++;
+      result[i].rowSpan = j - i;
+      for (let k = i + 1; k < j; k++) result[k].skip = true;
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  return result;
+}
+
+const HATCH_STYLE: React.CSSProperties = {
+  background: 'repeating-linear-gradient(-45deg, #e2e8f0, #e2e8f0 4px, #f8fafc 4px, #f8fafc 12px)',
+};
+
 export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boolean }) {
   const [weekDate, setWeekDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const weekStart = getWeekStart(weekDate);
@@ -68,6 +84,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [closedCells, setClosedCells] = useState<Set<string>>(new Set());
+  const [offDays, setOffDays] = useState<Set<string>>(new Set()); // "empId-dow"
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
@@ -84,6 +101,9 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
       setEmployees(data.employees);
       setClosedCells(new Set(
         (data.closedSlots as ClosedSlot[]).map(c => `${c.day_of_week}-${c.slot}`)
+      ));
+      setOffDays(new Set(
+        (data.offDays as OffDay[]).map(o => `${o.employee_id}-${o.day_of_week}`)
       ));
     }
     setLoading(false);
@@ -153,6 +173,9 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
   const weekEnd = addDays(weekDate, 6);
   const weekLabel = `${format(weekDate, 'd MMM', { locale: fr })} – ${format(weekEnd, 'd MMM yyyy', { locale: fr })}`;
   const weekDates = DAYS.map((_, i) => addDays(weekDate, i));
+
+  // Pré-calcul rowSpans par colonne
+  const colRowSpans = DAYS.map((_, dayIdx) => computeColRowSpans(slots, dayIdx, closedCells));
 
   return (
     <div className="p-4">
@@ -288,6 +311,18 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
         </div>
       )}
 
+      {/* Légende */}
+      <div className="flex items-center gap-4 mb-3 text-[11px] text-slate-500">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-4 rounded" style={HATCH_STYLE} />
+          Fermé
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-4 rounded bg-red-100" />
+          Créneau non couvert
+        </span>
+      </div>
+
       {/* Grille 7 jours × créneaux horaires */}
       {loading ? (
         <div className="py-16 text-center text-slate-400 text-sm">Chargement…</div>
@@ -317,93 +352,117 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {slots.map(slot => (
+              {slots.map((slot, slotIdx) => (
                 <tr key={slot} className="hover:bg-slate-50/50 transition-colors">
                   <td className="sticky left-0 z-10 bg-white w-14 px-2 py-2 text-slate-600 font-semibold border-r border-slate-200 text-center align-top pt-2.5 text-[11px]">
                     {slot}
                   </td>
                   {DAYS.map((_, dayIdx) => {
+                    const { rowSpan, skip } = colRowSpans[dayIdx][slotIdx];
+                    if (skip) return null;
+
                     const cellKey = `${dayIdx}-${slot}`;
                     const isClosed = closedCells.has(cellKey);
                     const asgns = cellAssignments(dayIdx, slot);
+                    const isEmpty = !isClosed && asgns.length === 0;
+
+                    // Employees available: not already assigned, not off this day
                     const assignedIds = new Set(asgns.map(a => a.employee_id));
-                    const available = employees.filter(e => !assignedIds.has(e.id));
+                    const available = employees.filter(e =>
+                      !assignedIds.has(e.id) &&
+                      !offDays.has(`${e.id}-${dayIdx}`)
+                    );
                     const isSaving = saving === cellKey;
+
+                    const colStyle =
+                      dayIdx === 5 ? { borderRight: 'none' } :
+                      dayIdx === 6 ? { borderRight: '2px solid #cbd5e1' } :
+                      undefined;
+
+                    if (isClosed) {
+                      return (
+                        <td
+                          key={dayIdx}
+                          rowSpan={rowSpan}
+                          className={clsx(
+                            'px-1.5 py-1.5 align-middle border-r border-slate-100',
+                            dayIdx === 5 && 'border-l-2 border-slate-300'
+                          )}
+                          style={{ ...colStyle, ...HATCH_STYLE }}
+                        >
+                          {!readOnly && (
+                            <button
+                              onClick={() => toggleClosed(dayIdx, slot)}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/70 text-slate-500 hover:bg-white hover:text-slate-700 transition-colors"
+                              title="Cliquer pour rouvrir"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </td>
+                      );
+                    }
 
                     return (
                       <td
                         key={dayIdx}
                         className={clsx(
                           'px-1.5 py-1.5 align-top border-r border-slate-100 last:border-r-0',
-                          isClosed && 'bg-red-50',
+                          isEmpty && 'bg-red-50',
                           dayIdx === 5 && 'border-l-2 border-slate-300'
                         )}
-                        style={dayIdx === 5 ? { borderRight: 'none' } : dayIdx === 6 ? { borderRight: '2px solid #cbd5e1' } : undefined}
+                        style={colStyle}
                       >
-                        {isClosed ? (
-                          readOnly ? (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">
-                              Fermé
+                        <div className="flex flex-wrap gap-1 min-h-[22px] items-start">
+                          {asgns.map(a => (
+                            <span
+                              key={a.id}
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-slate-800"
+                              style={{ backgroundColor: a.employee_color }}
+                            >
+                              {a.employee_name.split(' ')[0]}
+                              {!readOnly && (
+                                <button
+                                  onClick={() => removeAssignment(a.id)}
+                                  className="opacity-40 hover:opacity-100 leading-none text-slate-700 ml-0.5"
+                                  title="Retirer"
+                                >
+                                  ×
+                                </button>
+                              )}
                             </span>
-                          ) : (
+                          ))}
+                          {!readOnly && available.length > 0 && (
+                            <select
+                              defaultValue=""
+                              disabled={isSaving}
+                              onChange={e => {
+                                const id = Number(e.target.value);
+                                if (id) { addEmployee(dayIdx, slot, id); e.target.value = ''; }
+                              }}
+                              className="text-[10px] border border-dashed border-slate-300 rounded-full px-1.5 py-0.5 text-slate-400 bg-white cursor-pointer hover:border-celadon-400 hover:text-celadon-600 appearance-none transition-colors focus:outline-none disabled:opacity-50"
+                            >
+                              <option value="" disabled>+</option>
+                              {available.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                              ))}
+                            </select>
+                          )}
+                          {!readOnly && (
                             <button
                               onClick={() => toggleClosed(dayIdx, slot)}
-                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                              title="Cliquer pour rouvrir"
+                              className="text-[10px] text-slate-300 hover:text-slate-600 border border-dashed border-slate-200 hover:border-slate-400 rounded-full px-1.5 py-0.5 transition-colors"
+                              title="Fermer ce créneau"
                             >
-                              Fermé ×
+                              Fermé
                             </button>
-                          )
-                        ) : (
-                          <div className="flex flex-wrap gap-1 min-h-[22px] items-start">
-                            {asgns.map(a => (
-                              <span
-                                key={a.id}
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-slate-800"
-                                style={{ backgroundColor: a.employee_color }}
-                              >
-                                {a.employee_name.split(' ')[0]}
-                                {!readOnly && (
-                                  <button
-                                    onClick={() => removeAssignment(a.id)}
-                                    className="opacity-40 hover:opacity-100 leading-none text-slate-700 ml-0.5"
-                                    title="Retirer"
-                                  >
-                                    ×
-                                  </button>
-                                )}
-                              </span>
-                            ))}
-                            {!readOnly && asgns.length === 0 && available.length > 0 && (
-                              <select
-                                defaultValue=""
-                                disabled={isSaving}
-                                onChange={e => {
-                                  const id = Number(e.target.value);
-                                  if (id) { addEmployee(dayIdx, slot, id); e.target.value = ''; }
-                                }}
-                                className="text-[10px] border border-dashed border-slate-300 rounded-full px-1.5 py-0.5 text-slate-400 bg-white cursor-pointer hover:border-celadon-400 hover:text-celadon-600 appearance-none transition-colors focus:outline-none disabled:opacity-50"
-                              >
-                                <option value="" disabled>+</option>
-                                {available.map(emp => (
-                                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                                ))}
-                              </select>
-                            )}
-                            {!readOnly && (
-                              <button
-                                onClick={() => toggleClosed(dayIdx, slot)}
-                                className="text-[10px] text-red-300 hover:text-red-600 border border-dashed border-red-200 hover:border-red-400 rounded-full px-1.5 py-0.5 transition-colors"
-                                title="Fermer ce créneau"
-                              >
-                                Fermé
-                              </button>
-                            )}
-                            {readOnly && asgns.length === 0 && (
-                              <span className="text-[10px] text-slate-300">—</span>
-                            )}
-                          </div>
-                        )}
+                          )}
+                          {isEmpty && (
+                            <span className="text-[10px] text-red-400 font-medium">
+                              {readOnly ? '⚠ Non couvert' : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     );
                   })}

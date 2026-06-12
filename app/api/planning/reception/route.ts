@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getManagerSession } from '@/lib/auth';
+import { format, addDays, parseISO } from 'date-fns';
 
 // GET /api/planning/reception?weekStart=YYYY-MM-DD&zone=reception — public
 export async function GET(req: NextRequest) {
@@ -31,10 +32,52 @@ export async function GET(req: NextRequest) {
     args: [weekStart, zone],
   });
 
+  // Compute employee off days for this week
+  const weekEnd = format(addDays(parseISO(weekStart), 6), 'yyyy-MM-dd');
+
+  const [templateOffRows, exceptOffRows, exceptWorkRows, leaveRows] = await Promise.all([
+    db.execute({ sql: 'SELECT employee_id, day_of_week FROM schedule_templates WHERE start_time IS NULL', args: [] }),
+    db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NULL', args: [weekStart, weekEnd] }),
+    db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NOT NULL', args: [weekStart, weekEnd] }),
+    db.execute({ sql: 'SELECT employee_id, start_date, end_date FROM paid_leaves WHERE start_date <= ? AND end_date >= ?', args: [weekEnd, weekStart] }),
+  ]);
+
+  // Build off set: "employeeId-dayOfWeek"
+  const offSet = new Set<string>();
+
+  for (const row of templateOffRows.rows) {
+    offSet.add(`${row.employee_id}-${row.day_of_week}`);
+  }
+  // Exception working day overrides template off
+  for (const row of exceptWorkRows.rows) {
+    const dow = ((parseISO(row.date as string).getDay() + 6) % 7);
+    offSet.delete(`${row.employee_id}-${dow}`);
+  }
+  // Exception off day
+  for (const row of exceptOffRows.rows) {
+    const dow = ((parseISO(row.date as string).getDay() + 6) % 7);
+    offSet.add(`${row.employee_id}-${dow}`);
+  }
+  // Paid leaves override everything
+  for (const row of leaveRows.rows) {
+    for (let i = 0; i < 7; i++) {
+      const dateStr = format(addDays(parseISO(weekStart), i), 'yyyy-MM-dd');
+      if (dateStr >= (row.start_date as string) && dateStr <= (row.end_date as string)) {
+        offSet.add(`${row.employee_id}-${i}`);
+      }
+    }
+  }
+
+  const offDays = Array.from(offSet).map(k => {
+    const [empId, dow] = k.split('-');
+    return { employee_id: Number(empId), day_of_week: Number(dow) };
+  });
+
   return NextResponse.json({
     assignments: rows.rows,
     employees: empRows.rows,
     closedSlots: closedRows.rows,
+    offDays,
   });
 }
 
