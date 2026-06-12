@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getManagerSession } from '@/lib/auth';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, addDays } from 'date-fns';
+
+// Calcule le jour de semaine (0=Lun … 6=Dim) à partir d'une date ISO et du lundi de la semaine
+function dateToDow(dateStr: string, weekStartStr: string): number {
+  const [dy, dm, dd] = dateStr.split('-').map(Number);
+  const [wy, wm, wd] = weekStartStr.split('-').map(Number);
+  return Math.round((new Date(dy, dm - 1, dd).getTime() - new Date(wy, wm - 1, wd).getTime()) / 86400000);
+}
 
 // GET /api/planning/reception?weekStart=YYYY-MM-DD&zone=reception — public
 export async function GET(req: NextRequest) {
@@ -33,7 +40,8 @@ export async function GET(req: NextRequest) {
   });
 
   // Compute employee off days for this week
-  const weekEnd = format(addDays(parseISO(weekStart), 6), 'yyyy-MM-dd');
+  const [wy, wm, wd] = weekStart.split('-').map(Number);
+  const weekEnd = format(addDays(new Date(wy, wm - 1, wd), 6), 'yyyy-MM-dd');
 
   const [templateOffRows, exceptOffRows, exceptWorkRows, leaveRows] = await Promise.all([
     db.execute({ sql: 'SELECT employee_id, day_of_week FROM schedule_templates WHERE start_time IS NULL', args: [] }),
@@ -50,18 +58,18 @@ export async function GET(req: NextRequest) {
   }
   // Exception working day overrides template off
   for (const row of exceptWorkRows.rows) {
-    const dow = ((parseISO(row.date as string).getDay() + 6) % 7);
+    const dow = dateToDow(row.date as string, weekStart);
     offSet.delete(`${row.employee_id}-${dow}`);
   }
   // Exception off day
   for (const row of exceptOffRows.rows) {
-    const dow = ((parseISO(row.date as string).getDay() + 6) % 7);
+    const dow = dateToDow(row.date as string, weekStart);
     offSet.add(`${row.employee_id}-${dow}`);
   }
   // Paid leaves override everything
   for (const row of leaveRows.rows) {
     for (let i = 0; i < 7; i++) {
-      const dateStr = format(addDays(parseISO(weekStart), i), 'yyyy-MM-dd');
+      const dateStr = format(addDays(new Date(wy, wm - 1, wd), i), 'yyyy-MM-dd');
       if (dateStr >= (row.start_date as string) && dateStr <= (row.end_date as string)) {
         offSet.add(`${row.employee_id}-${i}`);
       }

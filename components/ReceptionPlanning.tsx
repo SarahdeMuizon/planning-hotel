@@ -103,7 +103,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
         (data.closedSlots as ClosedSlot[]).map(c => `${c.day_of_week}-${c.slot}`)
       ));
       setOffDays(new Set(
-        (data.offDays as OffDay[]).map(o => `${o.employee_id}-${o.day_of_week}`)
+        ((data.offDays ?? []) as OffDay[]).map(o => `${o.employee_id}-${o.day_of_week}`)
       ));
     }
     setLoading(false);
@@ -432,7 +432,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
                               )}
                             </span>
                           ))}
-                          {!readOnly && available.length > 0 && (
+                          {!readOnly && asgns.length === 0 && available.length > 0 && (
                             <select
                               defaultValue=""
                               disabled={isSaving}
