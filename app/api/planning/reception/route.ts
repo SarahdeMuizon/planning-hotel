@@ -43,56 +43,57 @@ export async function GET(req: NextRequest) {
   const [wy, wm, wd] = weekStart.split('-').map(Number);
   const weekEnd = format(addDays(new Date(wy, wm - 1, wd), 6), 'yyyy-MM-dd');
 
-  const [allEmpsRows, templateWorkRows, exceptOffRows, exceptWorkRows, leaveRows] = await Promise.all([
-    db.execute({ sql: 'SELECT id FROM employees', args: [] }),
-    // Jours travaillés selon le template (start_time non null = présence)
-    db.execute({ sql: 'SELECT employee_id, day_of_week FROM schedule_templates WHERE start_time IS NOT NULL', args: [] }),
-    // Exceptions « off » cette semaine (start_time null = absent ce jour précis)
-    db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NULL', args: [weekStart, weekEnd] }),
-    // Exceptions « travaillé » cette semaine (override un jour normalement off)
-    db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NOT NULL', args: [weekStart, weekEnd] }),
-    db.execute({ sql: 'SELECT employee_id, start_date, end_date FROM paid_leaves WHERE start_date <= ? AND end_date >= ?', args: [weekEnd, weekStart] }),
-  ]);
+  let offDays: { employee_id: number; day_of_week: number }[] = [];
+  try {
+    const [allEmpsRows, templateWorkRows, exceptOffRows, exceptWorkRows, leaveRows] = await Promise.all([
+      db.execute({ sql: 'SELECT id FROM employees', args: [] }),
+      db.execute({ sql: 'SELECT employee_id, day_of_week FROM schedule_templates WHERE start_time IS NOT NULL', args: [] }),
+      db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NULL', args: [weekStart, weekEnd] }),
+      db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NOT NULL', args: [weekStart, weekEnd] }),
+      db.execute({ sql: 'SELECT employee_id, start_date, end_date FROM paid_leaves WHERE start_date <= ? AND end_date >= ?', args: [weekEnd, weekStart] }),
+    ]);
 
-  // Jours travaillés par template : Set "empId-dow"
-  const templateWorkSet = new Set<string>(
-    templateWorkRows.rows.map(r => `${r.employee_id}-${r.day_of_week}`)
-  );
+    // Jours travaillés par template : Set "empId-dow"
+    const templateWorkSet = new Set<string>(
+      templateWorkRows.rows.map(r => `${Number(r.employee_id)}-${Number(r.day_of_week)}`)
+    );
 
-  // Build off set: "employeeId-dayOfWeek"
-  // Départ : tous les jours sans template = off par défaut
-  const offSet = new Set<string>();
-  for (const emp of allEmpsRows.rows) {
-    for (let d = 0; d < 7; d++) {
-      if (!templateWorkSet.has(`${emp.id}-${d}`)) {
-        offSet.add(`${emp.id}-${d}`);
+    const offSet = new Set<string>();
+    // Jours sans template = off par défaut
+    for (const emp of allEmpsRows.rows) {
+      for (let d = 0; d < 7; d++) {
+        if (!templateWorkSet.has(`${Number(emp.id)}-${d}`)) {
+          offSet.add(`${Number(emp.id)}-${d}`);
+        }
       }
     }
-  }
-  // Exception travaillé ce jour précis → retire de off
-  for (const row of exceptWorkRows.rows) {
-    const dow = dateToDow(row.date as string, weekStart);
-    offSet.delete(`${row.employee_id}-${dow}`);
-  }
-  // Exception off ce jour précis → ajoute à off
-  for (const row of exceptOffRows.rows) {
-    const dow = dateToDow(row.date as string, weekStart);
-    offSet.add(`${row.employee_id}-${dow}`);
-  }
-  // Congés payés / maladie → toujours off
-  for (const row of leaveRows.rows) {
-    for (let i = 0; i < 7; i++) {
-      const dateStr = format(addDays(new Date(wy, wm - 1, wd), i), 'yyyy-MM-dd');
-      if (dateStr >= (row.start_date as string) && dateStr <= (row.end_date as string)) {
-        offSet.add(`${row.employee_id}-${i}`);
+    // Exception travaillé ce jour → retire de off
+    for (const row of exceptWorkRows.rows) {
+      const dow = dateToDow(row.date as string, weekStart);
+      offSet.delete(`${Number(row.employee_id)}-${dow}`);
+    }
+    // Exception off ce jour → ajoute à off
+    for (const row of exceptOffRows.rows) {
+      const dow = dateToDow(row.date as string, weekStart);
+      offSet.add(`${Number(row.employee_id)}-${dow}`);
+    }
+    // Congés / maladie → toujours off
+    for (const row of leaveRows.rows) {
+      for (let i = 0; i < 7; i++) {
+        const dateStr = format(addDays(new Date(wy, wm - 1, wd), i), 'yyyy-MM-dd');
+        if (dateStr >= (row.start_date as string) && dateStr <= (row.end_date as string)) {
+          offSet.add(`${Number(row.employee_id)}-${i}`);
+        }
       }
     }
-  }
 
-  const offDays = Array.from(offSet).map(k => {
-    const [empId, dow] = k.split('-');
-    return { employee_id: Number(empId), day_of_week: Number(dow) };
-  });
+    offDays = Array.from(offSet).map(k => {
+      const [empId, dow] = k.split('-');
+      return { employee_id: Number(empId), day_of_week: Number(dow) };
+    });
+  } catch (e) {
+    console.error('[reception] offDays error:', e);
+  }
 
   return NextResponse.json({
     assignments: rows.rows,
