@@ -43,30 +43,43 @@ export async function GET(req: NextRequest) {
   const [wy, wm, wd] = weekStart.split('-').map(Number);
   const weekEnd = format(addDays(new Date(wy, wm - 1, wd), 6), 'yyyy-MM-dd');
 
-  const [templateOffRows, exceptOffRows, exceptWorkRows, leaveRows] = await Promise.all([
-    db.execute({ sql: 'SELECT employee_id, day_of_week FROM schedule_templates WHERE start_time IS NULL', args: [] }),
+  const [allEmpsRows, templateWorkRows, exceptOffRows, exceptWorkRows, leaveRows] = await Promise.all([
+    db.execute({ sql: 'SELECT id FROM employees', args: [] }),
+    // Jours travaillés selon le template (start_time non null = présence)
+    db.execute({ sql: 'SELECT employee_id, day_of_week FROM schedule_templates WHERE start_time IS NOT NULL', args: [] }),
+    // Exceptions « off » cette semaine (start_time null = absent ce jour précis)
     db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NULL', args: [weekStart, weekEnd] }),
+    // Exceptions « travaillé » cette semaine (override un jour normalement off)
     db.execute({ sql: 'SELECT employee_id, date FROM schedule_exceptions WHERE date >= ? AND date <= ? AND start_time IS NOT NULL', args: [weekStart, weekEnd] }),
     db.execute({ sql: 'SELECT employee_id, start_date, end_date FROM paid_leaves WHERE start_date <= ? AND end_date >= ?', args: [weekEnd, weekStart] }),
   ]);
 
-  // Build off set: "employeeId-dayOfWeek"
-  const offSet = new Set<string>();
+  // Jours travaillés par template : Set "empId-dow"
+  const templateWorkSet = new Set<string>(
+    templateWorkRows.rows.map(r => `${r.employee_id}-${r.day_of_week}`)
+  );
 
-  for (const row of templateOffRows.rows) {
-    offSet.add(`${row.employee_id}-${row.day_of_week}`);
+  // Build off set: "employeeId-dayOfWeek"
+  // Départ : tous les jours sans template = off par défaut
+  const offSet = new Set<string>();
+  for (const emp of allEmpsRows.rows) {
+    for (let d = 0; d < 7; d++) {
+      if (!templateWorkSet.has(`${emp.id}-${d}`)) {
+        offSet.add(`${emp.id}-${d}`);
+      }
+    }
   }
-  // Exception working day overrides template off
+  // Exception travaillé ce jour précis → retire de off
   for (const row of exceptWorkRows.rows) {
     const dow = dateToDow(row.date as string, weekStart);
     offSet.delete(`${row.employee_id}-${dow}`);
   }
-  // Exception off day
+  // Exception off ce jour précis → ajoute à off
   for (const row of exceptOffRows.rows) {
     const dow = dateToDow(row.date as string, weekStart);
     offSet.add(`${row.employee_id}-${dow}`);
   }
-  // Paid leaves override everything
+  // Congés payés / maladie → toujours off
   for (const row of leaveRows.rows) {
     for (let i = 0; i < 7; i++) {
       const dateStr = format(addDays(new Date(wy, wm - 1, wd), i), 'yyyy-MM-dd');
