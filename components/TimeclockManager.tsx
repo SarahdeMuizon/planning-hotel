@@ -168,9 +168,9 @@ export default function TimeclockManager() {
                 <th className="py-3 px-4 text-left font-medium sticky left-0 bg-celadon-500 w-36">Employé</th>
                 <th className="py-3 px-3 text-center font-medium text-white/70 w-20" title="Horaire prévu">Prévu</th>
                 <th className="py-3 px-3 text-center font-medium w-20">Arrivée</th>
-                <th className="py-3 px-3 text-center font-medium w-20">Départ déj.</th>
+                <th className="py-3 px-3 text-center font-medium w-20">Début pause déj.</th>
                 <th className="py-3 px-3 text-center font-medium text-white/70 w-16">Écart</th>
-                <th className="py-3 px-3 text-center font-medium w-20">Retour</th>
+                <th className="py-3 px-3 text-center font-medium w-20">Fin pause déj.</th>
                 <th className="py-3 px-3 text-center font-medium w-20">Départ soir</th>
                 <th className="py-3 px-3 text-center font-medium text-white/60 w-20">Actions</th>
               </tr>
@@ -272,7 +272,7 @@ export default function TimeclockManager() {
             <span className="text-orange-500 font-medium">Léger retard (5–15 min)</span>
             <span className="text-red-600 font-medium">Retard (&gt;15 min)</span>
             <span>Négatif = en avance</span>
-            <span className="text-slate-400">Les colonnes Matin / Déj. / Retour / Soir correspondent aux 4 pointages possibles</span>
+            <span className="text-slate-400">Les colonnes Matin / Début pause déj. / Fin pause déj. / Soir correspondent aux 4 pointages possibles</span>
           </div>
         )}
       </div>
