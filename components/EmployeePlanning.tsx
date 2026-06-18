@@ -431,8 +431,10 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
           </div>
           {days
             .filter((date) => {
-              const day = schedule[format(date, 'yyyy-MM-dd')];
-              return day && (!day.is_off || day.is_leave);
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const day = schedule[dateStr];
+              const wk = format(startOfWeek(new Date(dateStr + 'T00:00:00'), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+              return day && (!day.is_off || day.is_leave) && wk === currentWeekKey;
             })
             .map((date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
