@@ -52,6 +52,17 @@ export function computeWorkedHours(
   return 0;
 }
  
+// Formats a decimal number of hours as "XhYY" (e.g. 7.5 -> "7h30", 8 -> "8h",
+// -1.25 -> "-1h15"). Rounds to the nearest minute.
+export function formatHoursMinutes(hours: number): string {
+  const sign = hours < 0 ? '-' : '';
+  const abs = Math.abs(hours);
+  let h = Math.floor(abs);
+  let m = Math.round((abs - h) * 60);
+  if (m === 60) { h += 1; m = 0; }
+  return m === 0 ? `${sign}${h}h` : `${sign}${h}h${String(m).padStart(2, '0')}`;
+}
+ 
 export function isOvernightShift(start: string | null, end: string | null): boolean {
   if (!start || !end) return false;
   const [sh, sm] = start.split(':').map(Number);
@@ -434,5 +445,7 @@ export async function getAllEmployeesMonthSchedule(
     return { employee, days, totalHours, restDays, leaveDays, sickDays, workDays };
   });
 }
+ 
+ 
  
 
