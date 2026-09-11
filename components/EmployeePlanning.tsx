@@ -1,12 +1,13 @@
 'use client';
-
+ 
 import { useState, useEffect, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, startOfWeek, differenceInCalendarDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Employee, DaySchedule, LeaveType } from '@/types';
 import { DAYS_FR } from '@/types';
+import { computeWorkedHours } from '@/lib/schedule';
 import clsx from 'clsx';
-
+ 
 interface LeaveRequest {
   id: number;
   leave_type: LeaveType;
@@ -17,19 +18,19 @@ interface LeaveRequest {
   rejection_reason: string | null;
   created_at: string;
 }
-
+ 
 const STATUS_LABEL = { pending: 'En attente', approved: 'Approuvé', rejected: 'Refusé' };
 const STATUS_CLS = {
   pending:  'bg-amber-100 text-amber-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
 };
-
+ 
 const MONTHS_FR = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
-
+ 
 interface PlanningData {
   employee: Employee;
   schedule: Record<string, DaySchedule>;
@@ -37,7 +38,7 @@ interface PlanningData {
   year: number;
   month: number;
 }
-
+ 
 export default function EmployeePlanning({ token, embedded = false }: { token: string; embedded?: boolean }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -45,7 +46,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   const [data, setData] = useState<PlanningData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
+ 
   // Leave requests state
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -56,12 +57,12 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   const [reqSaving, setReqSaving] = useState(false);
   const [reqError, setReqError] = useState('');
   const [reqSuccess, setReqSuccess] = useState(false);
-
+ 
   // Certificate state (CM only)
   const [certData, setCertData] = useState<string | null>(null);
   const [certName, setCertName] = useState<string | null>(null);
   const [certError, setCertError] = useState('');
-
+ 
   function handleCertFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) { setCertData(null); setCertName(null); return; }
@@ -76,9 +77,9 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
     reader.onload = () => setCertData(reader.result as string);
     reader.readAsDataURL(file);
   }
-
+ 
   function clearCert() { setCertData(null); setCertName(null); setCertError(''); }
-
+ 
   // Timeclock state
   const todayStr = format(now, 'yyyy-MM-dd');
   const [tcArrival,    setTcArrival]    = useState<string | null>(null);
@@ -86,7 +87,21 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   const [tcArrival2,   setTcArrival2]   = useState<string | null>(null);
   const [tcDeparture2, setTcDeparture2] = useState<string | null>(null);
   const [tcLoading, setTcLoading] = useState(false);
-
+ 
+  // Historique "Mes pointages" — tous les pointages du mois affiché, groupés par jour.
+  interface TimeclockEntryRow { date: string; type: string; clocked_at: string }
+  const [monthTimeclock, setMonthTimeclock] = useState<TimeclockEntryRow[]>([]);
+  const [tcHistoryLoading, setTcHistoryLoading] = useState(true);
+ 
+  const loadMonthTimeclock = useCallback(async () => {
+    setTcHistoryLoading(true);
+    const res = await fetch(`/api/employee/${token}/timeclock?year=${year}&month=${month}`);
+    if (res.ok) setMonthTimeclock(await res.json());
+    setTcHistoryLoading(false);
+  }, [token, year, month]);
+ 
+  useEffect(() => { loadMonthTimeclock(); }, [loadMonthTimeclock]);
+ 
   const loadTimeclock = useCallback(async () => {
     const res = await fetch(`/api/employee/${token}/timeclock?date=${todayStr}`);
     if (res.ok) {
@@ -97,7 +112,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       setTcDeparture2(rows.find(r => r.type === 'departure2')?.clocked_at ?? null);
     }
   }, [token, todayStr]);
-
+ 
   async function handleTimeclock(type: 'arrival' | 'departure' | 'arrival2' | 'departure2') {
     setTcLoading(true);
     const clockedAt = format(new Date(), 'HH:mm');
@@ -107,14 +122,15 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       body: JSON.stringify({ type, clockedAt, date: todayStr }),
     });
     await loadTimeclock();
+    await loadMonthTimeclock();
     setTcLoading(false);
   }
-
+ 
   const loadRequests = useCallback(async () => {
     const res = await fetch(`/api/employee/${token}/leave-requests`);
     if (res.ok) setRequests(await res.json());
   }, [token]);
-
+ 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/employee/${token}?year=${year}&month=${month}`)
@@ -125,10 +141,10 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       })
       .catch(() => { setError('Erreur de connexion.'); setLoading(false); });
   }, [token, year, month]);
-
+ 
   useEffect(() => { loadRequests(); }, [loadRequests]);
   useEffect(() => { loadTimeclock(); }, [loadTimeclock]);
-
+ 
   async function handleSubmitRequest() {
     setReqError('');
     if (!reqStart || !reqEnd) { setReqError('Veuillez renseigner les dates.'); return; }
@@ -159,7 +175,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       setReqError(d.error || 'Erreur lors de la soumission.');
     }
   }
-
+ 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
     else setMonth(m => m - 1);
@@ -168,7 +184,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
     if (month === 12) { setYear(y => y + 1); setMonth(1); }
     else setMonth(m => m + 1);
   }
-
+ 
   if (loading) {
     return (
       <div className={embedded ? 'py-16 text-center text-slate-400 text-sm' : 'min-h-screen bg-slate-50 flex items-center justify-center'}>
@@ -176,7 +192,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       </div>
     );
   }
-
+ 
   if (error || !data) {
     if (embedded) return <div className="py-10 text-center text-red-400 text-sm">{error}</div>;
     return (
@@ -188,28 +204,28 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
       </div>
     );
   }
-
+ 
   const { employee, schedule, totalHours } = data;
-
+ 
   // Build calendar grid
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(monthStart);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
+ 
   // Pad start with empty cells (Mon = 0)
   const startPad = (getDay(monthStart) + 6) % 7;
-
+ 
   // Calculate weekly hours
   const weeklyHours: Record<string, number> = {};
   for (const [dateStr, day] of Object.entries(schedule)) {
     const weekKey = format(startOfWeek(new Date(dateStr + 'T00:00:00'), { weekStartsOn: 1 }), 'yyyy-MM-dd');
     weeklyHours[weekKey] = (weeklyHours[weekKey] || 0) + day.hours;
   }
-
+ 
   // Current week key
   const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const thisWeekHours = weeklyHours[currentWeekKey] || 0;
-
+ 
   return (
     <div className={embedded ? '' : 'min-h-screen bg-slate-50'}>
       {/* Header — hidden when embedded in EmployeeDashboard */}
@@ -231,14 +247,14 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
           </div>
         </div>
       )}
-
+ 
       <div className="max-w-lg mx-auto p-4 space-y-4">
         {/* ── Timeclock card ── */}
         <div className="card p-4">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
             Pointage — {format(now, 'd MMMM yyyy', { locale: fr })}
           </div>
-
+ 
           {/* ── Matin ── */}
           <div className="mb-2">
             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Matin</div>
@@ -279,7 +295,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               </div>
             </div>
           </div>
-
+ 
           {/* ── Après-midi (visible dès que departure est pointé) ── */}
           {(tcDeparture || tcArrival2 || tcDeparture2) && (
             <div className="mt-3 pt-3 border-t border-slate-100">
@@ -323,7 +339,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
             </div>
           )}
         </div>
-
+ 
         {/* Stats cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-3 text-center">
@@ -339,7 +355,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
             <div className="text-xs text-slate-500 mt-0.5">{MONTHS_FR[month - 1]}</div>
           </div>
         </div>
-
+ 
         {/* Month navigation */}
         <div className="flex items-center justify-between">
           <button onClick={prevMonth} className="btn-secondary p-2">
@@ -356,7 +372,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
             </svg>
           </button>
         </div>
-
+ 
         {/* Calendar grid */}
         <div className="card overflow-hidden">
           {/* Day headers */}
@@ -365,21 +381,21 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               <div key={d} className="text-center text-xs font-medium text-white py-2">{d}</div>
             ))}
           </div>
-
+ 
           {/* Day cells */}
           <div className="grid grid-cols-7">
             {/* Padding */}
             {Array.from({ length: startPad }).map((_, i) => (
               <div key={`pad-${i}`} className="aspect-square" />
             ))}
-
+ 
             {days.map((date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const day = schedule[dateStr];
               const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
               const isLeave = day?.is_leave ?? false;
               const isWorking = day && !day.is_off && !isLeave;
-
+ 
               return (
                 <div
                   key={dateStr}
@@ -423,7 +439,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
             })}
           </div>
         </div>
-
+ 
         {/* This month detail list */}
         <div className="card divide-y divide-slate-100">
           <div className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50">
@@ -440,7 +456,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               const dateStr = format(date, 'yyyy-MM-dd');
               const day = schedule[dateStr];
               const hours = day?.hours || 0;
-
+ 
               return (
                 <div key={dateStr} className="flex items-center px-4 py-2.5 gap-3">
                   <div className="w-16 flex-shrink-0">
@@ -478,18 +494,77 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
               );
             })}
         </div>
-
+ 
       </div>
-
+ 
+      {/* ── Mes pointages — historique jour par jour du mois affiché ──── */}
+      <div className="card overflow-hidden">
+        <div className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-50">
+          Mes pointages — {MONTHS_FR[month - 1]} {year}
+        </div>
+        {tcHistoryLoading ? (
+          <div className="py-8 text-center text-slate-400 text-sm">Chargement...</div>
+        ) : (() => {
+          const byDate = new Map<string, { arrival: string | null; departure: string | null; arrival2: string | null; departure2: string | null }>();
+          for (const e of monthTimeclock) {
+            if (!byDate.has(e.date)) byDate.set(e.date, { arrival: null, departure: null, arrival2: null, departure2: null });
+            const d = byDate.get(e.date)!;
+            d[e.type as 'arrival' | 'departure' | 'arrival2' | 'departure2'] = e.clocked_at;
+          }
+          const sortedDates = Array.from(byDate.keys()).sort((a, b) => b.localeCompare(a));
+          if (sortedDates.length === 0) {
+            return <div className="py-8 text-center text-slate-400 text-sm">Aucun pointage ce mois-ci.</div>;
+          }
+          return (
+            <div className="divide-y divide-slate-100">
+              {sortedDates.map((dateStr) => {
+                const p = byDate.get(dateStr)!;
+                const worked = computeWorkedHours(p.arrival, p.departure, p.arrival2, p.departure2);
+                const date = new Date(dateStr + 'T00:00:00');
+                return (
+                  <div key={dateStr} className="flex items-center px-4 py-2.5 gap-3">
+                    <div className="w-16 flex-shrink-0">
+                      <div className="text-sm font-medium text-slate-800 capitalize">
+                        {format(date, 'EEE', { locale: fr })}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {format(date, 'd MMM', { locale: fr })}
+                      </div>
+                    </div>
+                    <div className="flex-1 grid grid-cols-4 gap-1 text-center">
+                      {[p.arrival, p.departure, p.arrival2, p.departure2].map((t, i) => (
+                        <div key={i} className="text-xs">
+                          {t
+                            ? <span className="font-semibold text-slate-700">{t.slice(0, 5)}</span>
+                            : <span className="text-slate-200">—</span>}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-sm font-semibold text-slate-600 w-10 text-right flex-shrink-0">
+                      {worked > 0
+                        ? (worked % 1 === 0 ? `${worked}h` : `${worked.toFixed(1)}h`)
+                        : <span className="text-slate-300">—</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="px-4 py-1.5 text-[10px] text-slate-400 flex gap-3">
+                <span>Arrivée</span><span>Début pause</span><span>Retour pause</span><span>Départ</span>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+ 
       {/* ── Leave request section ─────────────────────────────────────── */}
       <div className="space-y-3">
-
+ 
         {reqSuccess && (
           <div className="card px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
             Demande envoyée, en attente de validation.
           </div>
         )}
-
+ 
         {/* CTA button */}
         {!showRequestForm && (
           <button
@@ -502,7 +577,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
             Faire une demande de congé
           </button>
         )}
-
+ 
         {/* Request form */}
         {showRequestForm && (
           <div className="card p-4 space-y-3">
@@ -514,7 +589,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                 </svg>
               </button>
             </div>
-
+ 
             {/* Type */}
             <div className="flex gap-2">
               {(['cp', 'cm'] as LeaveType[]).map(t => (
@@ -532,7 +607,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                 </button>
               ))}
             </div>
-
+ 
             {/* Dates */}
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -544,13 +619,13 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                 <input type="date" value={reqEnd} min={reqStart || undefined} onChange={e => setReqEnd(e.target.value)} className="input-field text-sm" />
               </div>
             </div>
-
+ 
             {reqStart && reqEnd && reqStart <= reqEnd && (
               <p className="text-xs text-slate-500">
                 {differenceInCalendarDays(new Date(reqEnd + 'T00:00:00'), new Date(reqStart + 'T00:00:00')) + 1} jour(s)
               </p>
             )}
-
+ 
             {/* Certificate upload — CM only */}
             {reqType === 'cm' && (
               <div>
@@ -599,7 +674,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                 {certError && <p className="text-xs text-red-500 mt-1">{certError}</p>}
               </div>
             )}
-
+ 
             {/* Comment */}
             <div>
               <label className="block text-xs text-slate-500 mb-1">Commentaire (optionnel)</label>
@@ -611,15 +686,15 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                 placeholder="Motif, précisions..."
               />
             </div>
-
+ 
             {reqError && <p className="text-xs text-red-500">{reqError}</p>}
-
+ 
             <button onClick={handleSubmitRequest} disabled={reqSaving} className="btn-primary w-full text-sm">
               {reqSaving ? 'Envoi...' : 'Envoyer la demande'}
             </button>
           </div>
         )}
-
+ 
         {/* My requests */}
         {requests.length > 0 && (
           <div className="card overflow-hidden">
@@ -659,7 +734,9 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
           </div>
         )}
       </div>
-
+ 
     </div>
   );
 }
+ 
+
