@@ -1,13 +1,14 @@
 'use client';
-
+ 
 import { useState, useEffect, useCallback } from 'react';
 import { format, addDays, subDays, startOfWeek, getDaysInMonth, getDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { EmployeeWeek } from '@/types';
 import type { EmployeeMonthRow } from '@/lib/schedule';
+import { computeWorkedHours } from '@/lib/schedule';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
-
+ 
 interface TimeclockRow {
   id: number;
   employee_id: number;
@@ -17,7 +18,7 @@ interface TimeclockRow {
   type: 'arrival' | 'departure' | 'arrival2' | 'departure2';
   clocked_at: string;
 }
-
+ 
 interface EmployeeTimeclock {
   employee_id: number;
   employee_name: string;
@@ -31,24 +32,24 @@ interface EmployeeTimeclock {
   arrivalDiff:   number | null;
   departureDiff: number | null;
 }
-
+ 
 const MONTHS_FR = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 const DAY_LETTERS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
+ 
 // JS getDay (0=Sun) → Mon-based index
 function toMon0(jsDay: number) {
   return (jsDay + 6) % 7;
 }
-
+ 
 function toMins(t: string | null): number | null {
   if (!t) return null;
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
 }
-
+ 
 function diffLabel(planned: string | null, actual: string | null): { text: string; cls: string } | null {
   const p = toMins(planned), a = toMins(actual);
   if (p === null || a === null) return null;
@@ -58,7 +59,7 @@ function diffLabel(planned: string | null, actual: string | null): { text: strin
   const cls = abs <= 5 ? 'text-green-600' : abs <= 15 ? 'text-orange-500' : 'text-red-600';
   return { text, cls };
 }
-
+ 
 // Same thresholds as diffLabel, but returning hex colors (for inline styles / PDF export)
 function diffColor(planned: string | null, actual: string | null): string {
   const p = toMins(planned), a = toMins(actual);
@@ -66,11 +67,15 @@ function diffColor(planned: string | null, actual: string | null): string {
   const abs = Math.abs(a - p);
   return abs <= 5 ? '#16a34a' : abs <= 15 ? '#f97316' : '#dc2626';
 }
-
+ 
 function fmtDate(d: Date) {
   return format(d, 'EEEE d MMMM yyyy', { locale: fr });
 }
-
+ 
+function fmtHours(h: number): string {
+  return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
+}
+ 
 function PdfIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,18 +84,18 @@ function PdfIcon() {
     </svg>
   );
 }
-
+ 
 export default function TimeclockManager() {
   const now = new Date();
   const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
-
+ 
   // ── Vue Jour ──────────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState(() => format(now, 'yyyy-MM-dd'));
   const [entries, setEntries] = useState<TimeclockRow[]>([]);
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-
+ 
   const load = useCallback(async (date: string) => {
     setLoading(true);
     const weekStart = startOfWeek(new Date(date + 'T00:00:00'), { weekStartsOn: 1 });
@@ -102,23 +107,23 @@ export default function TimeclockManager() {
     if (schedRes.ok) setSchedules(await schedRes.json());
     setLoading(false);
   }, []);
-
+ 
   useEffect(() => { if (viewMode === 'day') load(selectedDate); }, [selectedDate, load, viewMode]);
-
+ 
   async function handleDelete(id: number) {
     setDeletingId(id);
     await fetch(`/api/planning/timeclock?id=${id}`, { method: 'DELETE' });
     setDeletingId(null);
     load(selectedDate);
   }
-
+ 
   // ── Vue Mois ──────────────────────────────────────────────────────────
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
   const [monthEntries, setMonthEntries] = useState<TimeclockRow[]>([]);
   const [monthSchedule, setMonthSchedule] = useState<EmployeeMonthRow[]>([]);
   const [monthLoading, setMonthLoading] = useState(true);
-
+ 
   const loadMonth = useCallback(async (y: number, m: number) => {
     setMonthLoading(true);
     const [tcRes, schedRes] = await Promise.all([
@@ -129,9 +134,9 @@ export default function TimeclockManager() {
     if (schedRes.ok) setMonthSchedule(await schedRes.json());
     setMonthLoading(false);
   }, []);
-
+ 
   useEffect(() => { if (viewMode === 'month') loadMonth(year, month); }, [year, month, loadMonth, viewMode]);
-
+ 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
     else setMonth(m => m - 1);
@@ -144,7 +149,7 @@ export default function TimeclockManager() {
     setYear(now.getFullYear());
     setMonth(now.getMonth() + 1);
   }
-
+ 
   const daysInMonth = getDaysInMonth(new Date(year, month - 1));
   const todayStr = format(now, 'yyyy-MM-dd');
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
@@ -153,17 +158,34 @@ export default function TimeclockManager() {
     const dateStr = format(d, 'yyyy-MM-dd');
     return { num: i + 1, dow, dateStr, isWeekend: dow >= 5, isToday: dateStr === todayStr };
   });
-
+ 
   // Pointage du matin (arrivée) par employé + par jour, avec statut ponctualité
   function monthArrivalFor(employeeId: number, dateStr: string) {
     return monthEntries.find(e => e.employee_id === employeeId && e.date === dateStr && e.type === 'arrival') || null;
   }
-
+ 
+  // Total des heures réellement pointées sur le mois pour un employé (somme jour par jour
+  // des 4 pointages possibles), utilisé pour la colonne "Pointé" et l'écart heures supp/moins.
+  function monthWorkedHoursFor(employeeId: number): number {
+    const byDate = new Map<string, { arrival: string | null; departure: string | null; arrival2: string | null; departure2: string | null }>();
+    for (const e of monthEntries) {
+      if (e.employee_id !== employeeId) continue;
+      if (!byDate.has(e.date)) byDate.set(e.date, { arrival: null, departure: null, arrival2: null, departure2: null });
+      const d = byDate.get(e.date)!;
+      d[e.type] = e.clocked_at;
+    }
+    let total = 0;
+    for (const d of byDate.values()) {
+      total += computeWorkedHours(d.arrival, d.departure, d.arrival2, d.departure2);
+    }
+    return total;
+  }
+ 
   function handleExportMonthPDF() {
     const headerCells = monthDays.map(({ num, dow, isWeekend, isToday }) =>
       `<th class="${isToday ? 'th-today' : isWeekend ? 'th-weekend' : ''}">${num}<br/><span style="font-size:7px;font-weight:400">${DAY_LETTERS[dow]}</span></th>`
     ).join('');
-
+ 
     const bodyRows = monthSchedule.map((row) => {
       let lateCount = 0;
       const dayCells = monthDays.map(({ dateStr }) => {
@@ -181,33 +203,33 @@ export default function TimeclockManager() {
         const color = diffColor(day.start_time, arrivalEntry.clocked_at);
         return `<td style="color:${color};font-weight:700;">${arrivalEntry.clocked_at.slice(0, 5)}</td>`;
       }).join('');
-
+ 
       return `<tr>
         <td class="td-name"><span style="color:${row.employee.color};margin-right:4px">●</span>${row.employee.name}</td>
         ${dayCells}
         <td class="cell-count" style="color:${lateCount > 0 ? '#dc2626' : '#16a34a'}">${lateCount}</td>
       </tr>`;
     }).join('');
-
+ 
     const html = `<table>
       <thead><tr>
         <th class="th-name">Employé</th>${headerCells}<th>Retards</th>
       </tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>`;
-
+ 
     openPrintWindow(
       `Pointage — ${MONTHS_FR[month - 1]} ${year}`,
       'Heure d\'arrivée du matin — vert = à l\'heure, orange = léger retard, rouge = retard',
       html
     );
   }
-
+ 
   const date = new Date(selectedDate + 'T00:00:00');
-
+ 
   return (
     <div className="p-4 max-w-screen-xl mx-auto">
-
+ 
       {/* Toggle Jour / Mois */}
       <div className="flex items-center gap-2 mb-4">
         <button
@@ -223,7 +245,7 @@ export default function TimeclockManager() {
           Mois
         </button>
       </div>
-
+ 
       {viewMode === 'day' ? (
         <>
           {/* Toolbar */}
@@ -251,7 +273,7 @@ export default function TimeclockManager() {
               />
             </div>
           </div>
-
+ 
           {/* Table jour */}
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
@@ -265,6 +287,7 @@ export default function TimeclockManager() {
                     <th className="py-3 px-3 text-center font-medium text-white/70 w-16">Écart</th>
                     <th className="py-3 px-3 text-center font-medium w-20">Fin pause déj.</th>
                     <th className="py-3 px-3 text-center font-medium w-20">Départ soir</th>
+                    <th className="py-3 px-3 text-center font-medium w-20">Total</th>
                     <th className="py-3 px-3 text-center font-medium text-white/60 w-20">Actions</th>
                   </tr>
                 </thead>
@@ -303,18 +326,18 @@ export default function TimeclockManager() {
                       if (e.type === 'departure2') m.departure2 = e.clocked_at;
                     }
                     const merged = Array.from(map.values()).sort((a, b) => a.employee_name.localeCompare(b.employee_name));
-
+ 
                     if (loading) {
                       return (
                         <tr>
-                          <td colSpan={8} className="py-12 text-center text-slate-400 text-sm">Chargement...</td>
+                          <td colSpan={9} className="py-12 text-center text-slate-400 text-sm">Chargement...</td>
                         </tr>
                       );
                     }
                     if (merged.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={8} className="py-12 text-center text-slate-400 text-sm">
+                          <td colSpan={9} className="py-12 text-center text-slate-400 text-sm">
                             Aucun pointage ni planning ce jour.
                           </td>
                         </tr>
@@ -377,6 +400,14 @@ export default function TimeclockManager() {
                           <td className="px-3 py-2 text-center">
                             <ClockCell time={row.departure2} />
                           </td>
+                          <td className="px-3 py-2 text-center">
+                            {(() => {
+                              const worked = computeWorkedHours(row.arrival, row.departure, row.arrival2, row.departure2);
+                              return worked > 0
+                                ? <span className="text-sm font-bold text-slate-800">{fmtHours(worked)}</span>
+                                : <span className="text-xs text-slate-200">—</span>;
+                            })()}
+                          </td>
                           <td className="px-2 py-2 text-center">
                             <div className="flex items-center justify-center gap-0.5 flex-wrap">
                               <DelBtn entry={e1} /><DelBtn entry={e2} />
@@ -390,7 +421,7 @@ export default function TimeclockManager() {
                 </tbody>
               </table>
             </div>
-
+ 
             {!loading && (
               <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 text-xs text-slate-400 flex flex-wrap gap-4">
                 <span className="text-green-600 font-medium">À l'heure (≤5 min)</span>
@@ -424,13 +455,13 @@ export default function TimeclockManager() {
                 {MONTHS_FR[month - 1]} {year}
               </span>
             </div>
-
+ 
             <button onClick={handleExportMonthPDF} disabled={monthLoading || monthSchedule.length === 0} className="btn-secondary text-sm flex items-center gap-1.5">
               <PdfIcon />
               Exporter en PDF
             </button>
           </div>
-
+ 
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-4 mb-3 text-xs text-slate-500">
             <div className="flex items-center gap-1.5">
@@ -453,8 +484,12 @@ export default function TimeclockManager() {
               <span className="w-4 h-4 rounded bg-slate-100 border border-slate-200 inline-block" />
               Non prévu / repos
             </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-green-600 font-bold">+</span>
+              Écart = heures pointées − heures prévues (vert = heures supp, rouge = heures en moins)
+            </div>
           </div>
-
+ 
           {/* Grille mois */}
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
@@ -483,16 +518,22 @@ export default function TimeclockManager() {
                     <th className="px-2 py-2 text-center text-xs font-medium text-white/80 w-16 whitespace-nowrap">
                       Retards
                     </th>
+                    <th className="px-2 py-2 text-center text-xs font-medium text-white/80 w-16 whitespace-nowrap">
+                      Pointé
+                    </th>
+                    <th className="px-2 py-2 text-center text-xs font-medium text-white/80 w-20 whitespace-nowrap" title="Heures pointées − heures prévues au planning">
+                      Écart
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {monthLoading ? (
                     <tr>
-                      <td colSpan={daysInMonth + 2} className="py-16 text-center text-slate-400 text-sm">Chargement...</td>
+                      <td colSpan={daysInMonth + 4} className="py-16 text-center text-slate-400 text-sm">Chargement...</td>
                     </tr>
                   ) : monthSchedule.length === 0 ? (
                     <tr>
-                      <td colSpan={daysInMonth + 2} className="py-16 text-center text-slate-400 text-sm">
+                      <td colSpan={daysInMonth + 4} className="py-16 text-center text-slate-400 text-sm">
                         Aucun employé.
                       </td>
                     </tr>
@@ -505,7 +546,7 @@ export default function TimeclockManager() {
                         const arrivalEntry = scheduled ? monthArrivalFor(row.employee.id, dateStr) : null;
                         const diff = scheduled && arrivalEntry ? diffLabel(day.start_time, arrivalEntry.clocked_at) : null;
                         if (diff && diff.cls !== 'text-green-600') lateCount++;
-
+ 
                         return (
                           <td
                             key={num}
@@ -531,7 +572,7 @@ export default function TimeclockManager() {
                           </td>
                         );
                       });
-
+ 
                       return (
                         <tr key={row.employee.id} className={clsx('border-t border-slate-100', rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')}>
                           <td className={clsx('sticky left-0 z-10 px-3 py-1.5', rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50')}>
@@ -547,6 +588,24 @@ export default function TimeclockManager() {
                           <td className={clsx('text-center text-xs font-bold', lateCount > 0 ? 'text-red-600' : 'text-green-600')}>
                             {lateCount > 0 ? lateCount : '—'}
                           </td>
+                          {(() => {
+                            const worked = monthWorkedHoursFor(row.employee.id);
+                            const gap = worked - row.totalHours;
+                            const gapRounded = Math.round(gap * 10) / 10;
+                            return (
+                              <>
+                                <td className="text-center text-xs font-bold text-slate-700">
+                                  {worked > 0 ? fmtHours(worked) : '—'}
+                                </td>
+                                <td className={clsx(
+                                  'text-center text-xs font-bold',
+                                  gapRounded === 0 ? 'text-slate-400' : gapRounded > 0 ? 'text-green-600' : 'text-red-600'
+                                )}>
+                                  {worked === 0 ? '—' : `${gapRounded > 0 ? '+' : ''}${fmtHours(gapRounded)}`}
+                                </td>
+                              </>
+                            );
+                          })()}
                         </tr>
                       );
                     })
@@ -560,3 +619,5 @@ export default function TimeclockManager() {
     </div>
   );
 }
+ 
+
