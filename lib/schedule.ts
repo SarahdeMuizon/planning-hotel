@@ -2,7 +2,7 @@ import { getDb } from './db';
 import type { Client } from '@libsql/client';
 import type { Employee, EmployeeWeek, DaySchedule, MonthStats, LeaveType } from '@/types';
 import { format, addDays, getDay, startOfMonth, endOfMonth, eachWeekOfInterval, startOfWeek, endOfWeek } from 'date-fns';
-
+ 
 export interface EmployeeMonthRow {
   employee: Employee;
   days: Record<string, DaySchedule>;
@@ -12,7 +12,7 @@ export interface EmployeeMonthRow {
   sickDays: number;  // congés maladie (CM)
   workDays: number;
 }
-
+ 
 export function calcHours(start: string | null, end: string | null): number {
   if (!start || !end) return 0;
   const [sh, sm] = start.split(':').map(Number);
@@ -24,26 +24,46 @@ export function calcHours(start: string | null, end: string | null): number {
     : 24 * 60 - startMins + endMins;
   return diff / 60;
 }
-
+ 
 export function calcTotalHours(
   s1: string | null, e1: string | null,
   s2: string | null, e2: string | null
 ): number {
   return calcHours(s1, e1) + calcHours(s2, e2);
 }
-
+ 
+// Computes hours actually worked from up to 4 timeclock punches on a single day:
+// arrival (morning in) / departure (lunch out) / arrival2 (lunch in) / departure2 (evening out).
+// - If both lunch punches are present: sum of (departure-arrival) + (departure2-arrival2).
+// - Otherwise (no lunch break punched): single continuous session from arrival to
+//   whichever of departure2/departure is the latest available end punch.
+// - If no end punch is available yet (still clocked in), returns 0.
+export function computeWorkedHours(
+  arrival: string | null,
+  departure: string | null,
+  arrival2: string | null,
+  departure2: string | null
+): number {
+  if (departure && arrival2) {
+    return calcHours(arrival, departure) + calcHours(arrival2, departure2);
+  }
+  const end = departure2 || departure;
+  if (arrival && end) return calcHours(arrival, end);
+  return 0;
+}
+ 
 export function isOvernightShift(start: string | null, end: string | null): boolean {
   if (!start || !end) return false;
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
   return eh * 60 + em < sh * 60 + sm;
 }
-
+ 
 // Convert JS getDay() (0=Sun) to Mon=0 format
 function toMon0(jsDay: number): number {
   return (jsDay + 6) % 7;
 }
-
+ 
 // Ensure slot1 is always the earlier start time.
 // HH:MM lexicographic comparison equals chronological order for same-day times.
 function sortedSlots(
@@ -53,7 +73,7 @@ function sortedSlots(
   if (!s1 || !s2) return [s1, e1, s2, e2];
   return s1 <= s2 ? [s1, e1, s2, e2] : [s2, e2, s1, e1];
 }
-
+ 
 // Build a Map<"employeeId-YYYY-MM-DD", LeaveType> for all leave days in the range
 async function buildLeaveMap(db: Client, startStr: string, endStr: string): Promise<Map<string, LeaveType>> {
   const res = await db.execute({
@@ -76,7 +96,7 @@ async function buildLeaveMap(db: Client, startStr: string, endStr: string): Prom
   }
   return map;
 }
-
+ 
 function makeLeaveDay(leaveType: LeaveType): DaySchedule {
   return {
     start_time: null, end_time: null,
@@ -84,18 +104,18 @@ function makeLeaveDay(leaveType: LeaveType): DaySchedule {
     is_off: true, is_exception: false, is_leave: true, leave_type: leaveType, hours: 0,
   };
 }
-
+ 
 export async function getWeekSchedules(
   startDate: Date,
   employees: Employee[]
 ): Promise<EmployeeWeek[]> {
   const db = await getDb();
-
+ 
   const dates: string[] = [];
   for (let i = 0; i < 7; i++) {
     dates.push(format(addDays(startDate, i), 'yyyy-MM-dd'));
   }
-
+ 
   const [exceptionsRes, templatesRes, leaveMap] = await Promise.all([
     db.execute({
       sql: 'SELECT * FROM schedule_exceptions WHERE date >= ? AND date <= ?',
@@ -104,21 +124,21 @@ export async function getWeekSchedules(
     db.execute('SELECT * FROM schedule_templates'),
     buildLeaveMap(db, dates[0], dates[6]),
   ]);
-
+ 
   const exceptions = new Map<string, typeof exceptionsRes.rows[0]>();
   for (const row of exceptionsRes.rows) {
     exceptions.set(`${row.employee_id}-${row.date}`, row);
   }
-
+ 
   const templates = new Map<string, typeof templatesRes.rows[0]>();
   for (const row of templatesRes.rows) {
     templates.set(`${row.employee_id}-${row.day_of_week}`, row);
   }
-
+ 
   return employees.map((employee) => {
     const days: Record<string, DaySchedule> = {};
     let totalHours = 0;
-
+ 
     for (const date of dates) {
       const lt = leaveMap.get(`${employee.id}-${date}`);
       if (lt) {
@@ -128,7 +148,7 @@ export async function getWeekSchedules(
       const dayOfWeek = toMon0(getDay(new Date(date + 'T00:00:00')));
       const exc = exceptions.get(`${employee.id}-${date}`);
       const tpl = templates.get(`${employee.id}-${dayOfWeek}`);
-
+ 
       if (exc) {
         const [s1, e1, s2, e2] = sortedSlots(
           exc.start_time as string | null, exc.end_time as string | null,
@@ -161,11 +181,11 @@ export async function getWeekSchedules(
         };
       }
     }
-
+ 
     return { employee, days, totalHours };
   });
 }
-
+ 
 export async function getMonthStats(
   year: number,
   month: number,
@@ -176,7 +196,7 @@ export async function getMonthStats(
   const monthEnd = endOfMonth(monthStart);
   const startStr = format(monthStart, 'yyyy-MM-dd');
   const endStr = format(monthEnd, 'yyyy-MM-dd');
-
+ 
   const [exceptionsRes, templatesRes, leaveMap] = await Promise.all([
     db.execute({
       sql: 'SELECT * FROM schedule_exceptions WHERE date >= ? AND date <= ?',
@@ -185,27 +205,27 @@ export async function getMonthStats(
     db.execute('SELECT * FROM schedule_templates'),
     buildLeaveMap(db, startStr, endStr),
   ]);
-
+ 
   const exceptions = new Map<string, typeof exceptionsRes.rows[0]>();
   for (const row of exceptionsRes.rows) {
     exceptions.set(`${row.employee_id}-${row.date}`, row);
   }
-
+ 
   const templates = new Map<string, typeof templatesRes.rows[0]>();
   for (const row of templatesRes.rows) {
     templates.set(`${row.employee_id}-${row.day_of_week}`, row);
   }
-
+ 
   return employees.map((employee) => {
     let totalHours = 0;
     const weeklyBreakdown: Record<string, number> = {};
-
+ 
     let current = monthStart;
     while (current <= monthEnd) {
       const dateStr = format(current, 'yyyy-MM-dd');
       const weekKey = format(startOfWeek(current, { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const dayOfWeek = toMon0(getDay(current));
-
+ 
       let hours = 0;
       if (!leaveMap.get(`${employee.id}-${dateStr}`)) {
         const exc = exceptions.get(`${employee.id}-${dateStr}`);
@@ -222,16 +242,16 @@ export async function getMonthStats(
           );
         }
       }
-
+ 
       totalHours += hours;
       weeklyBreakdown[weekKey] = (weeklyBreakdown[weekKey] || 0) + hours;
       current = addDays(current, 1);
     }
-
+ 
     return { employee, totalHours, weeklyBreakdown };
   });
 }
-
+ 
 export async function getEmployeeMonthSchedule(
   employeeId: number,
   year: number,
@@ -242,7 +262,7 @@ export async function getEmployeeMonthSchedule(
   const monthEnd = endOfMonth(monthStart);
   const startStr = format(monthStart, 'yyyy-MM-dd');
   const endStr = format(monthEnd, 'yyyy-MM-dd');
-
+ 
   const [exceptionsRes, templatesRes, leaveMap] = await Promise.all([
     db.execute({
       sql: 'SELECT * FROM schedule_exceptions WHERE employee_id = ? AND date >= ? AND date <= ?',
@@ -254,35 +274,35 @@ export async function getEmployeeMonthSchedule(
     }),
     buildLeaveMap(db, startStr, endStr),
   ]);
-
+ 
   const exceptions = new Map<string, typeof exceptionsRes.rows[0]>();
   for (const row of exceptionsRes.rows) {
     exceptions.set(row.date as string, row);
   }
-
+ 
   const templates = new Map<number, typeof templatesRes.rows[0]>();
   for (const row of templatesRes.rows) {
     templates.set(row.day_of_week as number, row);
   }
-
+ 
   const schedule: Record<string, DaySchedule> = {};
   let totalHours = 0;
-
+ 
   let current = monthStart;
   while (current <= monthEnd) {
     const dateStr = format(current, 'yyyy-MM-dd');
     const dayOfWeek = toMon0(getDay(current));
-
+ 
     const lt = leaveMap.get(`${employeeId}-${dateStr}`);
     if (lt) {
       schedule[dateStr] = makeLeaveDay(lt);
       current = addDays(current, 1);
       continue;
     }
-
+ 
     const exc = exceptions.get(dateStr);
     const tpl = templates.get(dayOfWeek);
-
+ 
     if (exc) {
       const [s1, e1, s2, e2] = sortedSlots(
         exc.start_time as string | null, exc.end_time as string | null,
@@ -314,13 +334,13 @@ export async function getEmployeeMonthSchedule(
         is_off: true, is_exception: false, is_leave: false, leave_type: null, hours: 0,
       };
     }
-
+ 
     current = addDays(current, 1);
   }
-
+ 
   return { schedule, totalHours };
 }
-
+ 
 export async function getAllEmployeesMonthSchedule(
   year: number,
   month: number,
@@ -331,7 +351,7 @@ export async function getAllEmployeesMonthSchedule(
   const monthEnd = endOfMonth(monthStart);
   const startStr = format(monthStart, 'yyyy-MM-dd');
   const endStr = format(monthEnd, 'yyyy-MM-dd');
-
+ 
   const [exceptionsRes, templatesRes, leaveMap] = await Promise.all([
     db.execute({
       sql: 'SELECT * FROM schedule_exceptions WHERE date >= ? AND date <= ?',
@@ -340,7 +360,7 @@ export async function getAllEmployeesMonthSchedule(
     db.execute('SELECT * FROM schedule_templates'),
     buildLeaveMap(db, startStr, endStr),
   ]);
-
+ 
   const exceptions = new Map<string, typeof exceptionsRes.rows[0]>();
   for (const row of exceptionsRes.rows) {
     exceptions.set(`${row.employee_id}-${row.date}`, row);
@@ -349,7 +369,7 @@ export async function getAllEmployeesMonthSchedule(
   for (const row of templatesRes.rows) {
     templates.set(`${row.employee_id}-${row.day_of_week}`, row);
   }
-
+ 
   return employees.map((employee) => {
     const days: Record<string, DaySchedule> = {};
     let totalHours = 0;
@@ -357,12 +377,12 @@ export async function getAllEmployeesMonthSchedule(
     let leaveDays = 0;
     let sickDays = 0;
     let workDays = 0;
-
+ 
     let current = monthStart;
     while (current <= monthEnd) {
       const dateStr = format(current, 'yyyy-MM-dd');
       const dayOfWeek = toMon0(getDay(current));
-
+ 
       let entry: DaySchedule;
       const lt = leaveMap.get(`${employee.id}-${dateStr}`);
       if (lt) {
@@ -402,7 +422,7 @@ export async function getAllEmployeesMonthSchedule(
           };
         }
       }
-
+ 
       if (entry.leave_type === 'cm') sickDays++;
       else if (entry.is_leave) leaveDays++;
       else if (entry.is_off) restDays++;
@@ -410,7 +430,9 @@ export async function getAllEmployeesMonthSchedule(
       days[dateStr] = entry;
       current = addDays(current, 1);
     }
-
+ 
     return { employee, days, totalHours, restDays, leaveDays, sickDays, workDays };
   });
 }
+ 
+
