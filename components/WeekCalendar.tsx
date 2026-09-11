@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import { useState, useEffect, useCallback } from 'react';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, getMonth, getYear, startOfMonth, getDaysInMonth, getDay, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -10,7 +10,7 @@ import MonthStatsPanel from './MonthStatsPanel';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
 import { isOvernightShift } from '@/lib/schedule';
-
+ 
 export default function WeekCalendar({
   department,
   readOnly = false,
@@ -28,54 +28,74 @@ export default function WeekCalendar({
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [loading, setLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
+  // Pointages de la semaine affichée, indexés par "employeeId-date", pour repérer
+  // les pointages faits un jour de repos (affichés en alerte sur la case "Repos").
+  const [restPunches, setRestPunches] = useState<Map<string, { clocked_at: string; type: string }[]>>(new Map());
   const [modalData, setModalData] = useState<{
     employee: Employee;
     date: string;
     dayOfWeek: number;
   } | null>(null);
-
+ 
   const fetchSchedules = useCallback(async (date: Date) => {
     setLoading(true);
     const startStr = format(date, 'yyyy-MM-dd');
+    const endStr = format(addDays(date, 6), 'yyyy-MM-dd');
     const tokenParam = fetchToken ? `&employeeToken=${fetchToken}` : '';
-    const res = await fetch(`/api/planning?startDate=${startStr}${tokenParam}`);
-    if (res.ok) {
-      const data = await res.json();
+    const [schedRes, tcRes] = await Promise.all([
+      fetch(`/api/planning?startDate=${startStr}${tokenParam}`),
+      fetch(`/api/planning/timeclock/range?start=${startStr}&end=${endStr}${tokenParam}`),
+    ]);
+    if (schedRes.ok) {
+      const data = await schedRes.json();
       setSchedules(data);
+    }
+    if (tcRes.ok) {
+      const rows: { employee_id: number; date: string; clocked_at: string; type: string }[] = await tcRes.json();
+      const map = new Map<string, { clocked_at: string; type: string }[]>();
+      for (const r of rows) {
+        const key = `${r.employee_id}-${r.date}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push({ clocked_at: r.clocked_at, type: r.type });
+      }
+      for (const list of map.values()) list.sort((a, b) => a.clocked_at.localeCompare(b.clocked_at));
+      setRestPunches(map);
+    } else {
+      setRestPunches(new Map());
     }
     setLoading(false);
   }, [fetchToken]);
-
+ 
   useEffect(() => {
     fetchSchedules(weekStart);
   }, [weekStart, fetchSchedules]);
-
+ 
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
+ 
   function openModal(employee: Employee, date: string, dayOfWeek: number) {
     setModalData({ employee, date, dayOfWeek });
   }
-
+ 
   function handleModalClose(refreshed: boolean) {
     setModalData(null);
     if (refreshed) fetchSchedules(weekStart);
   }
-
+ 
   const weekLabel = `${format(weekStart, 'd MMM', { locale: fr })} – ${format(addDays(weekStart, 6), 'd MMM yyyy', { locale: fr })}`;
-
+ 
   const visible = department
     ? schedules.filter((s) => s.employee.department === department)
     : schedules;
-
+ 
   function handleExportPDF() {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-
+ 
     const headerCells = weekDates.map((date, i) => {
       const ds = format(date, 'yyyy-MM-dd');
       const cls = ds === todayStr ? 'th-today' : '';
       return `<th class="${cls}">${DAYS_FR[i]}<br/>${format(date, 'd/MM')}</th>`;
     }).join('');
-
+ 
     const bodyRows = visible.map((row) => {
       const dayCells = weekDates.map((date) => {
         const ds = format(date, 'yyyy-MM-dd');
@@ -96,7 +116,7 @@ export default function WeekCalendar({
         }
         return `<td class="cell-rest">Repos</td>`;
       }).join('');
-
+ 
       const hrs = row.totalHours % 1 === 0 ? `${row.totalHours}h` : `${row.totalHours.toFixed(1)}h`;
       return `<tr>
         <td class="td-name"><span style="color:${row.employee.color};margin-right:4px">●</span>${row.employee.name}</td>
@@ -104,21 +124,21 @@ export default function WeekCalendar({
         <td class="cell-total">${hrs}</td>
       </tr>`;
     }).join('');
-
+ 
     const html = `<table>
       <thead><tr>
         <th class="th-name">Employé</th>${headerCells}<th>Total</th>
       </tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>`;
-
+ 
     openPrintWindow(
       `Planning — Semaine du ${weekLabel}`,
       department || 'Tous les départements',
       html
     );
   }
-
+ 
   return (
     <div className="p-4 max-w-screen-xl mx-auto">
       {/* Header toolbar */}
@@ -220,7 +240,7 @@ export default function WeekCalendar({
             )}
           </div>
         </div>
-
+ 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowStats(!showStats)}
@@ -234,12 +254,12 @@ export default function WeekCalendar({
           </button>
         </div>
       </div>
-
+ 
       {/* Month stats panel */}
       {showStats && (
         <MonthStatsPanel year={getYear(weekStart)} month={getMonth(weekStart) + 1} />
       )}
-
+ 
       {/* Calendar grid */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -309,7 +329,7 @@ export default function WeekCalendar({
                         </span>
                       </div>
                     </td>
-
+ 
                     {/* Days */}
                     {weekDates.map((date, dayIdx) => {
                       const dateStr = format(date, 'yyyy-MM-dd');
@@ -318,7 +338,11 @@ export default function WeekCalendar({
                       const isLeave = day?.is_leave ?? false;
                       const leaveType = day?.leave_type ?? null;
                       const isWorking = day && !day.is_off;
-
+                      const restPunchList = !isWorking && !isLeave
+                        ? restPunches.get(`${row.employee.id}-${dateStr}`) ?? null
+                        : null;
+                      const punchedOnRest = !!restPunchList && restPunchList.length > 0;
+ 
                       return (
                         <td
                           key={dayIdx}
@@ -331,12 +355,17 @@ export default function WeekCalendar({
                         >
                           <button
                             onClick={() => !isLeave && !readOnly && openModal(row.employee, dateStr, dayIdx)}
+                            title={punchedOnRest
+                              ? `Pointé alors que prévu en repos : ${restPunchList!.map(p => p.clocked_at.slice(0, 5)).join(', ')}`
+                              : undefined}
                             className={clsx(
                               'w-full rounded-lg py-1.5 px-1 text-xs transition-all',
                               isLeave
                                 ? leaveType === 'cm'
                                   ? 'bg-orange-100 text-orange-800 font-medium cursor-default'
                                   : 'bg-green-100 text-green-800 font-medium cursor-default'
+                                : punchedOnRest
+                                ? 'bg-red-100 text-red-700 font-semibold ring-1 ring-inset ring-red-300'
                                 : readOnly
                                 ? isWorking
                                   ? 'text-slate-800 font-medium shadow-sm cursor-default'
@@ -350,6 +379,13 @@ export default function WeekCalendar({
                             {isLeave ? (
                               <span className={leaveType === 'cm' ? 'text-orange-700' : 'text-green-700'}>
                                 {leaveType === 'cm' ? 'Congé maladie' : 'Congés payés'}
+                              </span>
+                            ) : punchedOnRest ? (
+                              <span className="flex flex-col items-center leading-tight">
+                                <span>⚠️ Repos</span>
+                                <span className="text-[10px]">
+                                  pointé {restPunchList!.map(p => p.clocked_at.slice(0, 5)).join(', ')}
+                                </span>
                               </span>
                             ) : isWorking ? (
                               <>
@@ -373,7 +409,7 @@ export default function WeekCalendar({
                         </td>
                       );
                     })}
-
+ 
                     {/* Weekly total */}
                     <td className="py-2 px-3 text-center">
                       <span className="text-sm font-semibold text-slate-700">
@@ -388,7 +424,7 @@ export default function WeekCalendar({
             </tbody>
           </table>
         </div>
-
+ 
         {/* Legend */}
         <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1">
@@ -397,10 +433,13 @@ export default function WeekCalendar({
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded bg-orange-200" /> Congé maladie (CM)
           </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded bg-red-100 ring-1 ring-inset ring-red-300" /> Pointé alors que prévu en repos
+          </span>
           {!readOnly && <span>Cliquer sur une case pour modifier</span>}
         </div>
       </div>
-
+ 
       {/* Schedule edit modal — manager/admin only */}
       {!readOnly && modalData && (
         <ScheduleModal
@@ -418,7 +457,7 @@ export default function WeekCalendar({
     </div>
   );
 }
-
+ 
 function PdfIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,3 +466,5 @@ function PdfIcon() {
     </svg>
   );
 }
+ 
+
