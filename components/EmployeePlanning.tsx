@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, startOfWee
 import { fr } from 'date-fns/locale';
 import type { Employee, DaySchedule, LeaveType } from '@/types';
 import { DAYS_FR } from '@/types';
-import { computeWorkedHours } from '@/lib/schedule';
+import { computeWorkedHours, formatHoursMinutes } from '@/lib/schedule';
 import clsx from 'clsx';
  
 interface LeaveRequest {
@@ -542,7 +542,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
                     </div>
                     <div className="text-sm font-semibold text-slate-600 w-10 text-right flex-shrink-0">
                       {worked > 0
-                        ? (worked % 1 === 0 ? `${worked}h` : `${worked.toFixed(1)}h`)
+                        ? formatHoursMinutes(worked)
                         : <span className="text-slate-300">—</span>}
                     </div>
                   </div>
@@ -738,5 +738,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
     </div>
   );
 }
+ 
+ 
  
 
