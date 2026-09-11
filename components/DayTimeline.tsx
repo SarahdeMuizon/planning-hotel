@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { format, addDays, subDays, startOfWeek, subWeeks, getDay, startOfMonth, getDaysInMonth, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -7,17 +7,17 @@ import type { EmployeeWeek, DaySchedule, Employee } from '@/types';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
 import { isOvernightShift, calcHours } from '@/lib/schedule';
-
+ 
 // ── Timeline spans 06:00 → 22:00 (inclusive) in 30-min slots ──────────────
 const TIME_SLOTS: string[] = [];
 for (let h = 6; h <= 22; h++) {
   TIME_SLOTS.push(`${String(h).padStart(2, '0')}:00`);
   if (h < 22) TIME_SLOTS.push(`${String(h).padStart(2, '0')}:30`);
 }
-
+ 
 const OVERNIGHT_CAP = '22:30';
 const TIMELINE_START = TIME_SLOTS[0]; // "06:00"
-
+ 
 // ── VisualShift: one continuous block to render on the timeline ────────────
 interface VisualShift {
   start_time: string;
@@ -28,8 +28,9 @@ interface VisualShift {
   isOvernightEnd: boolean;
   is_exception: boolean;
   hours: number;
+  unscheduled?: boolean; // pointé alors que non prévu au planning (ex: repos)
 }
-
+ 
 function makeShift(
   start: string, end: string,
   isException: boolean,
@@ -46,7 +47,31 @@ function makeShift(
     hours: calcHours(start, end),
   };
 }
-
+ 
+// Builds a visual block from raw punches on a day with NO scheduled shift
+// (e.g. an employee clocking in on a rest day). Spans from the earliest to the
+// latest punch, with a minimum 30-min width so a single punch stays visible.
+function punchesToUnscheduledShift(times: string[]): VisualShift | null {
+  if (times.length === 0) return null;
+  const mins = times.map(toMinutes).sort((a, b) => a - b);
+  const startMin = mins[0];
+  const endMin = Math.max(mins[mins.length - 1], startMin + 30);
+  const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const start = toHHMM(startMin);
+  const end = toHHMM(endMin);
+  return {
+    start_time: start,
+    end_time: end,
+    actualStart: start,
+    actualEnd: end,
+    isOvernightStart: false,
+    isOvernightEnd: false,
+    is_exception: false,
+    hours: calcHours(start, end),
+    unscheduled: true,
+  };
+}
+ 
 // Returns up to 2 visual shifts for an employee on the selected day.
 // If today has no shifts, falls back to yesterday's overnight bleed-in.
 function getVisualShifts(
@@ -54,7 +79,7 @@ function getVisualShifts(
   yesterday: DaySchedule | null,
 ): VisualShift[] {
   const shifts: VisualShift[] = [];
-
+ 
   if (today && !today.is_off) {
     if (today.start_time && today.end_time) {
       shifts.push(makeShift(today.start_time, today.end_time, today.is_exception));
@@ -64,7 +89,7 @@ function getVisualShifts(
     }
     if (shifts.length > 0) return shifts;
   }
-
+ 
   // Bleed-in from yesterday's overnight shifts
   if (yesterday && !yesterday.is_off) {
     for (const [s, e] of [
@@ -85,16 +110,16 @@ function getVisualShifts(
       }
     }
   }
-
+ 
   return shifts;
 }
-
+ 
 // ── Slot helpers ──────────────────────────────────────────────────────────
 function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
 }
-
+ 
 function getActiveShift(visuals: VisualShift[], slot: string): VisualShift | null {
   const s = toMinutes(slot);
   for (const v of visuals) {
@@ -102,21 +127,21 @@ function getActiveShift(visuals: VisualShift[], slot: string): VisualShift | nul
   }
   return null;
 }
-
+ 
 function isSlotActive(visuals: VisualShift[], slot: string): boolean {
   return getActiveShift(visuals, slot) !== null;
 }
-
+ 
 function isFirstOfBlock(visuals: VisualShift[], idx: number): boolean {
   if (!isSlotActive(visuals, TIME_SLOTS[idx])) return false;
   return idx === 0 || !isSlotActive(visuals, TIME_SLOTS[idx - 1]);
 }
-
+ 
 function isLastOfBlock(visuals: VisualShift[], idx: number): boolean {
   if (!isSlotActive(visuals, TIME_SLOTS[idx])) return false;
   return idx === TIME_SLOTS.length - 1 || !isSlotActive(visuals, TIME_SLOTS[idx + 1]);
 }
-
+ 
 function getCurrentSlotIdx(): number | null {
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
@@ -128,7 +153,7 @@ function getCurrentSlotIdx(): number | null {
   }
   return null;
 }
-
+ 
 // ── Component ─────────────────────────────────────────────────────────────
 export default function DayTimeline({ department, fetchToken }: { department?: string; fetchToken?: string }) {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
@@ -137,21 +162,39 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [prevWeekSchedules, setPrevWeekSchedules] = useState<EmployeeWeek[]>([]);
   const [loading, setLoading] = useState(true);
+  // Pointages du jour affiché, par employé — sert à signaler un pointage fait
+  // alors que le jour n'était pas prévu au planning (ex : repos).
+  const [dayPunches, setDayPunches] = useState<Map<number, string[]>>(new Map());
   const [now, setNow] = useState<Date>(new Date());
   const currentRowRef = useRef<HTMLTableRowElement>(null);
-
+ 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
-
+ 
   const fetchDay = useCallback(async (date: Date) => {
     setLoading(true);
     const weekStart = startOfWeek(date, { weekStartsOn: 1 });
     const tp = fetchToken ? `&employeeToken=${fetchToken}` : '';
-    const res = await fetch(`/api/planning?startDate=${format(weekStart, 'yyyy-MM-dd')}${tp}`);
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const [res, tcRes] = await Promise.all([
+      fetch(`/api/planning?startDate=${format(weekStart, 'yyyy-MM-dd')}${tp}`),
+      fetch(`/api/planning/timeclock/range?start=${dateStr}&end=${dateStr}${tp}`),
+    ]);
     if (res.ok) setSchedules(await res.json());
-
+    if (tcRes.ok) {
+      const rows: { employee_id: number; clocked_at: string }[] = await tcRes.json();
+      const map = new Map<number, string[]>();
+      for (const r of rows) {
+        if (!map.has(r.employee_id)) map.set(r.employee_id, []);
+        map.get(r.employee_id)!.push(r.clocked_at);
+      }
+      setDayPunches(map);
+    } else {
+      setDayPunches(new Map());
+    }
+ 
     if (getDay(date) === 1) {
       const prevWeekStart = subWeeks(weekStart, 1);
       const prevRes = await fetch(`/api/planning?startDate=${format(prevWeekStart, 'yyyy-MM-dd')}${tp}`);
@@ -161,27 +204,27 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
     }
     setLoading(false);
   }, [fetchToken]);
-
+ 
   useEffect(() => { fetchDay(selectedDate); }, [selectedDate, fetchDay]);
-
+ 
   useEffect(() => {
     if (!loading && currentRowRef.current) {
       currentRowRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }, [loading]);
-
+ 
   const dateStr     = format(selectedDate, 'yyyy-MM-dd');
   const prevDateStr = format(subDays(selectedDate, 1), 'yyyy-MM-dd');
   const isToday     = dateStr === format(new Date(), 'yyyy-MM-dd');
   const currentSlotIdx = isToday ? getCurrentSlotIdx() : null;
-
+ 
   function getPrevShift(employeeId: number): DaySchedule | null {
     const source = getDay(selectedDate) === 1 && prevWeekSchedules.length > 0
       ? prevWeekSchedules
       : schedules;
     return source.find(r => r.employee.id === employeeId)?.days[prevDateStr] ?? null;
   }
-
+ 
   const entries = schedules
     .filter(row => !department || row.employee.department === department)
     .map(row => {
@@ -190,29 +233,41 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
       const visuals = getVisualShifts(today, prev);
       const isLeave = today?.is_leave ?? false;
       const leaveType = today?.leave_type ?? null;
+ 
+      // Pointé alors que non prévu (repos ou pas de planning ce jour) : on
+      // ajoute un bloc "non prévu" sur la timeline pour le signaler visuellement.
+      let punchedUnscheduled = false;
+      if (visuals.length === 0 && !isLeave) {
+        const punches = dayPunches.get(row.employee.id);
+        if (punches && punches.length > 0) {
+          const synthetic = punchesToUnscheduledShift(punches);
+          if (synthetic) { visuals.push(synthetic); punchedUnscheduled = true; }
+        }
+      }
+ 
       const actualHours = (() => {
         if (today && !today.is_off) return today.hours;
         if (prev && !prev.is_off) return prev.hours;
         return 0;
       })();
-      return { employee: row.employee, visuals, actualHours, isLeave, leaveType };
+      return { employee: row.employee, visuals, actualHours, isLeave, leaveType, punchedUnscheduled };
     });
-
+ 
   const presentNow = isToday
     ? entries.filter(({ visuals }) => {
         const nowMins = now.getHours() * 60 + now.getMinutes();
         return visuals.some(v => nowMins >= toMinutes(v.start_time) && nowMins < toMinutes(v.end_time));
       })
     : [];
-
+ 
   const workingToday = entries.filter(({ visuals }) => visuals.length > 0);
-
+ 
   // ── PDF export ────────────────────────────────────────────────────────────
   function handleExportPDF() {
     const activeSlots = TIME_SLOTS.filter(slot =>
       entries.some(({ visuals }) => isSlotActive(visuals, slot))
     );
-
+ 
     const empHeaders = entries.map(({ employee, visuals }) => {
       let sub = 'Repos';
       if (visuals.length > 0) {
@@ -227,7 +282,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
         <span style="font-size:8px;font-weight:400;opacity:.8">${sub}</span>
       </th>`;
     }).join('');
-
+ 
     const bodyRows = (activeSlots.length ? activeSlots : TIME_SLOTS).map(slot => {
       const isFullHour = slot.endsWith(':00');
       const cells = entries.map(({ employee, visuals }) => {
@@ -253,20 +308,20 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
         ${cells}<td class="cell-count">${count > 0 ? count : ''}</td>
       </tr>`;
     }).join('');
-
+ 
     const footerCells = entries.map(({ employee, visuals, actualHours: h }) =>
       `<td style="background:${h > 0 ? employee.color + '22' : ''};color:${h > 0 ? employee.color : '#94a3b8'};font-weight:700">
         ${h > 0 ? (h % 1 === 0 ? h + 'h' : h.toFixed(1) + 'h') : '—'}
         ${visuals.some(v => v.isOvernightStart || v.isOvernightEnd) ? '<span style="font-size:8px">🌙</span>' : ''}
       </td>`
     ).join('');
-
+ 
     const html = `<table>
       <thead><tr><th class="th-name">Heure</th>${empHeaders}<th>Nb</th></tr></thead>
       <tbody>${bodyRows}</tbody>
       <tfoot><tr><td class="td-name">Total</td>${footerCells}<td></td></tr></tfoot>
     </table>`;
-
+ 
     const dateLabel = format(selectedDate, 'EEEE d MMMM yyyy', { locale: fr });
     openPrintWindow(
       `Timeline — ${dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}`,
@@ -276,11 +331,11 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
       true,   // compact : tient sur une seule page A4 portrait / smartphone
     );
   }
-
+ 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 max-w-screen-xl mx-auto">
-
+ 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
@@ -366,7 +421,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
             )}
           </div>
         </div>
-
+ 
         <div className="flex items-center gap-2 text-sm">
           {isToday && (
             <span className="bg-celadon-100 text-celadon-700 px-2.5 py-1 rounded-full font-medium">
@@ -386,26 +441,26 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
           </button>
         </div>
       </div>
-
+ 
       {/* Timeline table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto max-h-[calc(100vh-220px)] overflow-y-auto">
           <table className="w-full min-w-max border-collapse">
-
+ 
             {/* ── Header ── */}
             <thead className="sticky top-0 z-20">
               <tr className="bg-celadon-500 text-white">
                 <th className="w-16 py-3 px-3 text-left text-xs font-medium text-white/70 sticky left-0 bg-celadon-500 z-30">
                   Heure
                 </th>
-
+ 
                 {loading
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <th key={i} className="px-2 py-3 min-w-[80px]">
                         <div className="h-4 bg-celadon-600 rounded animate-pulse w-16 mx-auto" />
                       </th>
                     ))
-                  : entries.map(({ employee, visuals, isLeave, leaveType }) => (
+                  : entries.map(({ employee, visuals, isLeave, leaveType, punchedUnscheduled }) => (
                       <th key={employee.id} className="px-2 py-2 min-w-[80px] text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span
@@ -413,7 +468,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                               'w-7 h-7 rounded-full flex items-center justify-center text-slate-800 text-xs font-bold',
                               visuals.length === 0 && !isLeave && 'opacity-40'
                             )}
-                            style={{ backgroundColor: employee.color }}
+                            style={{ backgroundColor: punchedUnscheduled ? '#fca5a5' : employee.color }}
                           >
                             {employee.name[0].toUpperCase()}
                           </span>
@@ -426,6 +481,10 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                           {isLeave ? (
                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium text-white ${leaveType === 'cm' ? 'bg-orange-500' : 'bg-green-500'}`}>
                               {leaveType === 'cm' ? 'Maladie' : 'Congés'}
+                            </span>
+                          ) : punchedUnscheduled ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium text-white bg-red-500" title="Pointé alors que non prévu au planning ce jour">
+                              ⚠️ Repos pointé
                             </span>
                           ) : visuals.length > 0 ? (
                             <span className="text-[10px] text-white/70 text-center">
@@ -444,13 +503,13 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                         </div>
                       </th>
                     ))}
-
+ 
                 {!loading && entries.length > 0 && (
                   <th className="px-3 py-3 text-xs font-medium text-slate-400 w-14 text-center">Nb</th>
                 )}
               </tr>
             </thead>
-
+ 
             {/* ── Body ── */}
             <tbody>
               {loading ? (
@@ -464,7 +523,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                   const isCurrentSlot = currentSlotIdx === slotIdx;
                   const isFullHour    = slot.endsWith(':00');
                   const presentCount  = entries.filter(({ visuals }) => isSlotActive(visuals, slot)).length;
-
+ 
                   return (
                     <tr
                       key={slot}
@@ -500,14 +559,14 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                           <span className="ml-1 inline-block w-1.5 h-1.5 bg-red-500 rounded-full align-middle" />
                         )}
                       </td>
-
+ 
                       {/* Employee cells */}
                       {entries.map(({ employee, visuals }) => {
                         const activeShift = getActiveShift(visuals, slot);
                         const active = !!activeShift;
                         const first  = active && isFirstOfBlock(visuals, slotIdx);
                         const last   = active && isLastOfBlock(visuals, slotIdx);
-
+ 
                         return (
                           <td key={employee.id} className={clsx('p-0', isFullHour ? 'h-7' : 'h-6')}>
                             {active ? (
@@ -516,12 +575,14 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                                   'h-full mx-0.5 relative',
                                   first && 'rounded-t-md',
                                   last  && 'rounded-b-md',
+                                  activeShift.unscheduled && 'ring-2 ring-inset ring-red-500'
                                 )}
-                                style={{ backgroundColor: employee.color, opacity: 0.9 }}
+                                style={{ backgroundColor: activeShift.unscheduled ? '#fca5a5' : employee.color, opacity: 0.9 }}
+                                title={activeShift.unscheduled ? 'Pointé alors que non prévu au planning ce jour' : undefined}
                               >
                                 {first && (
                                   <span className="absolute top-0.5 left-1 text-slate-800 text-[9px] font-semibold leading-none">
-                                    {activeShift.isOvernightEnd ? '🌙' : activeShift.actualStart.slice(0, 5)}
+                                    {activeShift.unscheduled ? '⚠️' : activeShift.isOvernightEnd ? '🌙' : activeShift.actualStart.slice(0, 5)}
                                   </span>
                                 )}
                                 {last && (
@@ -536,7 +597,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                           </td>
                         );
                       })}
-
+ 
                       {/* Present count */}
                       {entries.length > 0 && (
                         <td className={clsx('px-2 text-center', isFullHour ? 'h-7' : 'h-6')}>
@@ -555,7 +616,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                 })
               )}
             </tbody>
-
+ 
             {/* ── Footer ── */}
             {!loading && entries.length > 0 && (
               <tfoot>
@@ -583,7 +644,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
               </tfoot>
             )}
           </table>
-
+ 
           {/* Empty state */}
           {!loading && entries.length === 0 && (
             <div className="py-16 text-center text-slate-400 text-sm">
@@ -594,19 +655,22 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
             </div>
           )}
         </div>
-
+ 
         {/* Legend */}
         {!loading && entries.length > 0 && (
           <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 text-xs text-slate-400 flex flex-wrap gap-4">
             <span>🌙 = créneau de nuit chevauchant minuit</span>
             <span>🌙→ = heure de fin du créneau de nuit du jour précédent</span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded bg-red-300 ring-1 ring-inset ring-red-500" /> ⚠️ = pointé alors que non prévu au planning (ex : repos)
+            </span>
           </div>
         )}
       </div>
     </div>
   );
 }
-
+ 
 function PdfIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -615,3 +679,5 @@ function PdfIcon() {
     </svg>
   );
 }
+ 
+
