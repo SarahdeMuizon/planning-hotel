@@ -5,7 +5,7 @@ import { format, addDays, subDays, startOfWeek, getDaysInMonth, getDay } from 'd
 import { fr } from 'date-fns/locale';
 import type { EmployeeWeek } from '@/types';
 import type { EmployeeMonthRow } from '@/lib/schedule';
-import { computeWorkedHours } from '@/lib/schedule';
+import { computeWorkedHours, formatHoursMinutes } from '@/lib/schedule';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
  
@@ -73,7 +73,7 @@ function fmtDate(d: Date) {
 }
  
 function fmtHours(h: number): string {
-  return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
+  return formatHoursMinutes(h);
 }
  
 function PdfIcon() {
@@ -619,5 +619,7 @@ export default function TimeclockManager() {
     </div>
   );
 }
+ 
+ 
  
 
