@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Employee, LeaveType } from '@/types';
+import { moroccoNow } from '@/lib/morocco-time';
 
 interface LeaveRow {
   id: number;
@@ -124,7 +125,7 @@ export default function PaidLeaveManager() {
     setLeaves(prev => prev.filter(l => l.id !== id));
   }
 
-  const now = new Date();
+  const now = moroccoNow();
   const currentYear = now.getFullYear();
   const years = [...new Set(leaves.map(l => l.start_date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
   if (!years.includes(String(currentYear))) years.unshift(String(currentYear));

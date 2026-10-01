@@ -7,6 +7,7 @@ import type { DaySchedule, Employee } from '@/types';
 import type { EmployeeMonthRow } from '@/lib/schedule';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
+import { moroccoNow } from '@/lib/morocco-time';
 
 const MONTHS_FR = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -62,7 +63,7 @@ function saturate(hex: string, boost = 0.2): string {
 }
 
 export default function RestDaysCalendar({ department, fetchToken }: { department?: string; fetchToken?: string }) {
-  const now = new Date();
+  const now = moroccoNow();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
   const [rows, setRows] = useState<EmployeeMonthRow[]>([]);

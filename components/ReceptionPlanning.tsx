@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, startOfMonth, getDaysInMonth, getDay, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import clsx from 'clsx';
+import { moroccoNow } from '@/lib/morocco-time';
 
 // zones avec horaires dynamiques
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -76,7 +77,7 @@ const HATCH_STYLE: React.CSSProperties = {
 };
 
 export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boolean }) {
-  const [weekDate, setWeekDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [weekDate, setWeekDate] = useState<Date>(() => startOfWeek(moroccoNow(), { weekStartsOn: 1 }));
   const weekStart = getWeekStart(weekDate);
   const [zone, setZone] = useState<Zone>('reception');
   const slots = getSlotsForZone(zone);
@@ -90,7 +91,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
   const [copying, setCopying] = useState(false);
   const [copyMsg, setCopyMsg] = useState('');
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(new Date()));
+  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(moroccoNow()));
 
   const load = useCallback(async (ws: string, z: Zone) => {
     setLoading(true);
@@ -206,7 +207,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
             </svg>
           </button>
           <button
-            onClick={() => setWeekDate(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+            onClick={() => setWeekDate(startOfWeek(moroccoNow(), { weekStartsOn: 1 }))}
             className="btn-secondary px-3 py-2 text-sm"
           >
             Cette semaine
@@ -256,7 +257,7 @@ export default function ReceptionPlanning({ readOnly = false }: { readOnly?: boo
                     const firstDow = (getDay(pickerMonth) + 6) % 7;
                     const total = getDaysInMonth(pickerMonth);
                     const wkEndStr = format(addDays(weekDate, 6), 'yyyy-MM-dd');
-                    const todayStr = format(new Date(), 'yyyy-MM-dd');
+                    const todayStr = format(moroccoNow(), 'yyyy-MM-dd');
                     const cells: React.ReactNode[] = [];
                     for (let i = 0; i < firstDow; i++) cells.push(<div key={`e${i}`} />);
                     for (let d = 1; d <= total; d++) {

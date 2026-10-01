@@ -10,6 +10,7 @@ import MonthStatsPanel from './MonthStatsPanel';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
 import { isOvernightShift } from '@/lib/schedule';
+import { moroccoNow } from '@/lib/morocco-time';
  
 export default function WeekCalendar({
   department,
@@ -21,10 +22,10 @@ export default function WeekCalendar({
   fetchToken?: string;
 }) {
   const [weekStart, setWeekStart] = useState<Date>(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 })
+    startOfWeek(moroccoNow(), { weekStartsOn: 1 })
   );
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(new Date()));
+  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(moroccoNow()));
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [loading, setLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
@@ -88,7 +89,7 @@ export default function WeekCalendar({
     : schedules;
  
   function handleExportPDF() {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayStr = format(moroccoNow(), 'yyyy-MM-dd');
  
     const headerCells = weekDates.map((date, i) => {
       const ds = format(date, 'yyyy-MM-dd');
@@ -150,7 +151,7 @@ export default function WeekCalendar({
             </svg>
           </button>
           <button
-            onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+            onClick={() => setWeekStart(startOfWeek(moroccoNow(), { weekStartsOn: 1 }))}
             className="btn-secondary px-3 py-2 text-sm"
           >
             Aujourd'hui
@@ -210,7 +211,7 @@ export default function WeekCalendar({
                       const dateStr = format(date, 'yyyy-MM-dd');
                       const wkStr = format(weekStart, 'yyyy-MM-dd');
                       const wkEndStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
-                      const todayStr = format(new Date(), 'yyyy-MM-dd');
+                      const todayStr = format(moroccoNow(), 'yyyy-MM-dd');
                       const inWeek = dateStr >= wkStr && dateStr <= wkEndStr;
                       const isT = dateStr === todayStr;
                       cells.push(
@@ -270,7 +271,7 @@ export default function WeekCalendar({
                   Employé
                 </th>
                 {weekDates.map((date, i) => {
-                  const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                  const isToday = format(date, 'yyyy-MM-dd') === format(moroccoNow(), 'yyyy-MM-dd');
                   return (
                     <th
                       key={i}
@@ -334,7 +335,7 @@ export default function WeekCalendar({
                     {weekDates.map((date, dayIdx) => {
                       const dateStr = format(date, 'yyyy-MM-dd');
                       const day = row.days[dateStr];
-                      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+                      const isToday = dateStr === format(moroccoNow(), 'yyyy-MM-dd');
                       const isLeave = day?.is_leave ?? false;
                       const leaveType = day?.leave_type ?? null;
                       const isWorking = day && !day.is_off;

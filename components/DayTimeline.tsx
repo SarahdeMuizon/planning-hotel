@@ -7,6 +7,7 @@ import type { EmployeeWeek, DaySchedule, Employee } from '@/types';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
 import { isOvernightShift, calcHours } from '@/lib/schedule';
+import { moroccoNow } from '@/lib/morocco-time';
  
 // ── Timeline spans 06:00 → 22:00 (inclusive) in 30-min slots ──────────────
 const TIME_SLOTS: string[] = [];
@@ -143,7 +144,7 @@ function isLastOfBlock(visuals: VisualShift[], idx: number): boolean {
 }
  
 function getCurrentSlotIdx(): number | null {
-  const now = new Date();
+  const now = moroccoNow();
   const mins = now.getHours() * 60 + now.getMinutes();
   const first = toMinutes(TIME_SLOTS[0]);
   const last = toMinutes(TIME_SLOTS[TIME_SLOTS.length - 1]);
@@ -156,20 +157,20 @@ function getCurrentSlotIdx(): number | null {
  
 // ── Component ─────────────────────────────────────────────────────────────
 export default function DayTimeline({ department, fetchToken }: { department?: string; fetchToken?: string }) {
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => moroccoNow());
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(new Date()));
+  const [pickerMonth, setPickerMonth] = useState<Date>(() => startOfMonth(moroccoNow()));
   const [schedules, setSchedules] = useState<EmployeeWeek[]>([]);
   const [prevWeekSchedules, setPrevWeekSchedules] = useState<EmployeeWeek[]>([]);
   const [loading, setLoading] = useState(true);
   // Pointages du jour affiché, par employé — sert à signaler un pointage fait
   // alors que le jour n'était pas prévu au planning (ex : repos).
   const [dayPunches, setDayPunches] = useState<Map<number, string[]>>(new Map());
-  const [now, setNow] = useState<Date>(new Date());
+  const [now, setNow] = useState<Date>(moroccoNow());
   const currentRowRef = useRef<HTMLTableRowElement>(null);
  
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
+    const id = setInterval(() => setNow(moroccoNow()), 60_000);
     return () => clearInterval(id);
   }, []);
  
@@ -215,7 +216,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
  
   const dateStr     = format(selectedDate, 'yyyy-MM-dd');
   const prevDateStr = format(subDays(selectedDate, 1), 'yyyy-MM-dd');
-  const isToday     = dateStr === format(new Date(), 'yyyy-MM-dd');
+  const isToday     = dateStr === format(moroccoNow(), 'yyyy-MM-dd');
   const currentSlotIdx = isToday ? getCurrentSlotIdx() : null;
  
   function getPrevShift(employeeId: number): DaySchedule | null {
@@ -344,7 +345,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <button onClick={() => setSelectedDate(new Date())} className="btn-secondary px-3 py-2 text-sm">
+          <button onClick={() => setSelectedDate(moroccoNow())} className="btn-secondary px-3 py-2 text-sm">
             Aujourd'hui
           </button>
           <button onClick={() => setSelectedDate(d => addDays(d, 1))} className="btn-secondary p-2">
@@ -399,7 +400,7 @@ export default function DayTimeline({ department, fetchToken }: { department?: s
                       const date = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth(), d);
                       const dateStr = format(date, 'yyyy-MM-dd');
                       const selStr = format(selectedDate, 'yyyy-MM-dd');
-                      const todayStr = format(new Date(), 'yyyy-MM-dd');
+                      const todayStr = format(moroccoNow(), 'yyyy-MM-dd');
                       const isSel = dateStr === selStr;
                       const isT = dateStr === todayStr;
                       cells.push(

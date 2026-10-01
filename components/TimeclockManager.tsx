@@ -8,6 +8,7 @@ import type { EmployeeMonthRow } from '@/lib/schedule';
 import { computeWorkedHours, formatHoursMinutes } from '@/lib/schedule';
 import clsx from 'clsx';
 import { openPrintWindow } from '@/lib/print';
+import { moroccoNow } from '@/lib/morocco-time';
  
 interface TimeclockRow {
   id: number;
@@ -86,7 +87,7 @@ function PdfIcon() {
 }
  
 export default function TimeclockManager() {
-  const now = new Date();
+  const now = moroccoNow();
   const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
  
   // ── Vue Jour ──────────────────────────────────────────────────────────
@@ -255,7 +256,7 @@ export default function TimeclockManager() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <button onClick={() => setSelectedDate(format(new Date(), 'yyyy-MM-dd'))} className="btn-secondary px-3 py-2 text-sm">
+            <button onClick={() => setSelectedDate(format(moroccoNow(), 'yyyy-MM-dd'))} className="btn-secondary px-3 py-2 text-sm">
               Aujourd'hui
             </button>
             <button onClick={() => setSelectedDate(format(addDays(date, 1), 'yyyy-MM-dd'))} className="btn-secondary p-2">

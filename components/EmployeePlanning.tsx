@@ -7,6 +7,7 @@ import type { Employee, DaySchedule, LeaveType } from '@/types';
 import { DAYS_FR } from '@/types';
 import { computeWorkedHours, formatHoursMinutes } from '@/lib/schedule';
 import clsx from 'clsx';
+import { moroccoNow } from '@/lib/morocco-time';
  
 interface LeaveRequest {
   id: number;
@@ -40,7 +41,7 @@ interface PlanningData {
 }
  
 export default function EmployeePlanning({ token, embedded = false }: { token: string; embedded?: boolean }) {
-  const now = new Date();
+  const now = moroccoNow();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [data, setData] = useState<PlanningData | null>(null);
@@ -115,7 +116,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
  
   async function handleTimeclock(type: 'arrival' | 'departure' | 'arrival2' | 'departure2') {
     setTcLoading(true);
-    const clockedAt = format(new Date(), 'HH:mm');
+    const clockedAt = format(moroccoNow(), 'HH:mm');
     await fetch(`/api/employee/${token}/timeclock`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -223,7 +224,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
   }
  
   // Current week key
-  const currentWeekKey = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const currentWeekKey = format(startOfWeek(moroccoNow(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const thisWeekHours = weeklyHours[currentWeekKey] || 0;
  
   return (
@@ -392,7 +393,7 @@ export default function EmployeePlanning({ token, embedded = false }: { token: s
             {days.map((date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const day = schedule[dateStr];
-              const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+              const isToday = dateStr === format(moroccoNow(), 'yyyy-MM-dd');
               const isLeave = day?.is_leave ?? false;
               const isWorking = day && !day.is_off && !isLeave;
  

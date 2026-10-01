@@ -8,6 +8,7 @@ import EmployeePlanning from './EmployeePlanning';
 import ReceptionPlanning from './ReceptionPlanning';
 import type { Employee } from '@/types';
 import clsx from 'clsx';
+import { moroccoNow } from '@/lib/morocco-time';
 
 type EmpView = 'week' | 'day' | 'rest' | 'myplan' | 'planning';
 
@@ -24,7 +25,7 @@ export default function EmployeeDashboard({ token }: { token: string }) {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    const now = new Date();
+    const now = moroccoNow();
     fetch(`/api/employee/${token}?year=${now.getFullYear()}&month=${now.getMonth() + 1}`)
       .then(r => {
         if (!r.ok) { setLoadError(true); return null; }
