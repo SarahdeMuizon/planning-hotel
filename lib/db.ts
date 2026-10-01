@@ -143,6 +143,28 @@ async function initSchema(db: Client) {
 
   await migrateReceptionPlanningConstraint(db);
   await migrateReceptionZones(db);
+  await fixPunchesAfterMoroccoGmtSwitch(db);
+}
+
+// Le Maroc est passé définitivement à GMT le 20/09/2026, mais certains téléphones
+// sont restés à l'ancienne heure (UTC+1) : leurs pointages ont été enregistrés
+// avec 1 h de trop. On les recale sur l'heure réelle d'enregistrement (created_at,
+// en UTC = heure marocaine). Ne touche QUE :
+//   - les pointages à partir du 20/09/2026 (avant, UTC+1 était la bonne heure),
+//   - ceux qui ont ~1 h d'avance sur leur heure d'enregistrement (±3 min),
+//   - sans changement de jour.
+// Idempotent : une fois corrigé, un pointage n'a plus d'écart et n'est plus repris.
+async function fixPunchesAfterMoroccoGmtSwitch(db: Client) {
+  try {
+    await db.execute(`
+      UPDATE timeclock
+      SET clocked_at = strftime('%H:%M', created_at)
+      WHERE date >= '2026-09-20'
+        AND created_at IS NOT NULL
+        AND date(created_at) = date
+        AND abs((strftime('%s', date || ' ' || clocked_at) - strftime('%s', created_at)) / 60.0 - 60) <= 3
+    `);
+  } catch { /* ne bloque jamais le démarrage */ }
 }
 
 async function migrateReceptionZones(db: Client) {
