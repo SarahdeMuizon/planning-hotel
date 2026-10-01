@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import type { Employee } from '@/types';
+import { removeLeaveDayOnPunch, fillRestDayFromPunches } from '@/lib/leave-punch';
  
 type Ctx = { params: Promise<{ token: string }> };
  
@@ -79,7 +80,31 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     sql: `INSERT INTO notifications (type, employee_name, message) VALUES ('timeclock', ?, ?)`,
     args: [employee.name, `${employee.name} a pointé son ${typeLabel} à ${clockedAt}`],
   }).catch(() => {});
- 
+
+  // Pointer un jour de congé = le congé de ce jour est annulé automatiquement
+  try {
+    const removed = await removeLeaveDayOnPunch(db, Number(employee.id), date);
+    if (removed > 0) {
+      const [y, m, d] = String(date).split('-');
+      await db.execute({
+        sql: `INSERT INTO notifications (type, employee_name, message) VALUES ('timeclock', ?, ?)`,
+        args: [employee.name, `${employee.name} a pointé le ${d}/${m}/${y} alors qu'il était en congé : ce jour a été retiré de ses congés`],
+      }).catch(() => {});
+    }
+  } catch { /* le pointage reste enregistré même si la mise à jour du congé échoue */ }
+
+  // Pointer un jour de repos = le jour devient travaillé, avec les heures des pointages
+  try {
+    const rest = await fillRestDayFromPunches(db, Number(employee.id), date);
+    if (rest === 'converted') {
+      const [y, m, d] = String(date).split('-');
+      await db.execute({
+        sql: `INSERT INTO notifications (type, employee_name, message) VALUES ('timeclock', ?, ?)`,
+        args: [employee.name, `${employee.name} a pointé le ${d}/${m}/${y}, jour de repos : ce jour passe en jour travaillé au planning`],
+      }).catch(() => {});
+    }
+  } catch { /* le pointage reste enregistré même si la mise à jour du planning échoue */ }
+
   return NextResponse.json(result.rows[0], { status: 201 });
 }
  
