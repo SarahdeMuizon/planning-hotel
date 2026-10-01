@@ -1,3 +1,5 @@
+import { moroccoNow } from '@/lib/morocco-time';
+
 /**
  * Opens a new window with print-ready HTML and triggers window.print().
  * Colors are preserved via print-color-adjust: exact.
@@ -17,7 +19,7 @@ export function openPrintWindow(
     return;
   }
 
-  const today = new Date().toLocaleDateString('fr-FR', {
+  const today = moroccoNow().toLocaleDateString('fr-FR', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
 
